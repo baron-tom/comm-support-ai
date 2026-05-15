@@ -1,4 +1,4 @@
-const CACHE = "comm-ai-v1";
+const CACHE = "comm-ai-v2";
 const STATIC = ["/", "/index.html"];
 
 self.addEventListener("install", e => {
