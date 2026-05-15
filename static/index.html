@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>コミュニケーション支援AI</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@400;500;600&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', "Hiragino Sans", "Meiryo", sans-serif;
+      background: #F5F0EA;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding-bottom: 72px;
+      color: #1A1512;
+    }
+
+    /* ---- SCREENS ---- */
+    .screen { display: none; min-height: calc(100vh - 72px); }
+    .screen.active { display: block; }
+
+    /* ---- HEADER ---- */
+    .screen-header {
+      background: #FDFAF6;
+      padding: 16px 20px;
+      border-bottom: 1px solid #E8DDD2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .screen-header h1 {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.3rem;
+      font-weight: 400;
+      color: #0c0a09;
+      letter-spacing: 0.01em;
+    }
+    .plan-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: #F5F0EA;
+      color: #78716c;
+      letter-spacing: 0.08em;
+      font-family: 'Inter', sans-serif;
+    }
+    .plan-badge.pro {
+      background: #0c0a09;
+      color: white;
+    }
+
+    /* ---- BOTTOM NAV ---- */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: #FDFAF6;
+      border-top: 1px solid #E8DDD2;
+      display: flex;
+      height: 72px;
+      z-index: 100;
+      align-items: center;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      color: #d6d3d1;
+      border: none;
+      background: none;
+      padding: 10px 0;
+      transition: color 0.2s;
+    }
+    .nav-item.active { color: #647D58; }
+    .nav-item svg { width: 26px; height: 26px; }
+    .nav-item span { font-size: 0.68rem; font-family: 'Inter', sans-serif; }
+
+    /* 中央録音FAB */
+    .nav-rec-fab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+      position: relative;
+    }
+    .nav-rec-fab .fab-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #647D58;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(100,125,88,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-top: -20px;
+    }
+    .nav-rec-fab .fab-btn:active { transform: scale(0.92); }
+    .nav-rec-fab .fab-btn svg { width: 26px; height: 26px; fill: white; }
+    .nav-rec-fab span { font-size: 0.68rem; font-family: 'Inter', sans-serif; color: #d6d3d1; }
+    .nav-rec-fab.recording .fab-btn {
+      background: #FF3B30;
+      animation: fabPulse 1.5s infinite;
+    }
+    .nav-rec-fab.recording span { color: #FF3B30; }
+    @keyframes fabPulse {
+      0%, 100% { box-shadow: 0 4px 16px rgba(255,59,48,0.38); }
+      50% { box-shadow: 0 4px 24px rgba(255,59,48,0.7); transform: scale(1.05); }
+    }
+
+    /* ---- 録音・要約画面 ---- */
+
+    /* 状態ごとの表示切り替え */
+    .rec-idle .show-on-recording,
+    .rec-idle .show-on-paused { display: none !important; }
+    .rec-recording .show-on-idle,
+    .rec-recording .show-on-paused { display: none !important; }
+    .rec-paused .show-on-idle,
+    .rec-paused .show-on-recording { display: none !important; }
+    .rec-idle .show-on-active { display: none !important; }
+
+    /* コンテンツがボトムバーに隠れないよう余白 */
+    #recContainer { padding-bottom: 110px; }
+
+    /* ---- 待機中エリア ---- */
+    .idle-area { border-bottom: 1px solid #E8DDD2; }
+    .topic-input {
+      width: 100%;
+      padding: 22px 20px 6px;
+      border: none;
+      font-size: 1.5rem;
+      font-weight: 400;
+      font-family: 'EB Garamond', Georgia, serif;
+      color: #0c0a09;
+      background: transparent;
+      outline: none;
+    }
+    .topic-input::placeholder { color: #d6d3d1; }
+    .settings-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px 14px;
+    }
+    .settings-label { font-size: 0.78rem; color: #d6d3d1; margin-right: 2px; }
+    .settings-btn {
+      padding: 4px 14px;
+      border: 1px solid #E8DDD2;
+      border-radius: 9999px;
+      background: white;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: #a8a29e;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .settings-btn.active {
+      background: #0c0a09;
+      border-color: #0c0a09;
+      color: white;
+    }
+
+    /* ---- 録音中メインディスプレイ ---- */
+    .rec-main-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 20px 16px;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Atmospheric orbs */
+    .rec-main-display::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      left: -40px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(196,230,218,0.55) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .rec-main-display::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      right: -50px;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(220,210,242,0.5) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .rec-big-timer {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 4.2rem;
+      font-weight: 300;
+      color: #0c0a09;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .rec-status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      color: #a8a29e;
+      margin-top: -8px;
+      position: relative;
+      z-index: 1;
+    }
+    .rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #FF3B30;
+      animation: pulse 1.5s infinite;
+    }
+    .rec-dot.paused { background: #F39C12; animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    /* 音声ビジュアライザー */
+    .audio-visualizer {
+      display: block;
+      width: 100%;
+      height: 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ライブテキスト切り替えバー */
+    .live-toggle-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px;
+      border-top: 1px solid #E8DDD2;
+    }
+    .live-bar-label { font-size: 0.8rem; color: #a8a29e; font-weight: 500; }
+    .live-toggle-btn {
+      padding: 4px 12px;
+      border: 1px solid #E8DDD2;
+      border-radius: 9999px;
+      background: white;
+      font-size: 0.78rem;
+      color: #a8a29e;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .live-toggle-btn.on { border-color: #0c0a09; color: #0c0a09; }
+
+    /* ライブテキスト */
+    .live-section {
+      margin: 0 20px 12px;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #E8DDD2;
+      min-height: 80px;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-size: 1rem;
+      line-height: 1.8;
+      color: #292524;
+      white-space: pre-wrap;
+    }
+    .live-section.hidden { display: none; }
+
+    /* 下部固定バー */
+    .rec-bottom-bar {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      background: white;
+      border-top: 1px solid #E8DDD2;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 録音開始ボタンエリア */
+    .mic-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 20px 10px;
+      gap: 6px;
+    }
+    .mic-btn {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: #FF3B30;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 18px rgba(255,59,48,0.38);
+      transition: transform 0.15s;
+    }
+    .mic-btn:active { transform: scale(0.92); }
+    .mic-btn svg { width: 28px; height: 28px; fill: white; }
+    .mic-label { font-size: 0.78rem; color: #d6d3d1; letter-spacing: 0.01em; }
+
+    /* 録音コントロール */
+    .rec-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 6px 20px 12px;
+    }
+    .rec-ctrl-btn {
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+    }
+    .rec-ctrl-btn:active { transform: scale(0.92); }
+    .rec-ctrl-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .rec-ctrl-btn.pause {
+      padding: 13px 22px;
+      border-radius: 9999px;
+      background: #F5F0EA;
+      color: #292524;
+      border: 1px solid #E8DDD2;
+    }
+    .rec-ctrl-btn.resume {
+      padding: 13px 22px;
+      border-radius: 9999px;
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .rec-ctrl-btn.finish {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #FF3B30;
+      box-shadow: 0 4px 16px rgba(255,59,48,0.38);
+    }
+    .stop-square {
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* 要約エリア */
+    .summaries-section { padding: 0 20px 24px; }
+    .summaries-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .summaries-label {
+      font-size: 0.78rem;
+      color: #a8a29e;
+      letter-spacing: 0.04em;
+      font-family: 'Inter', sans-serif;
+    }
+    .all-dl-btn {
+      padding: 4px 13px;
+      border-radius: 9999px;
+      border: 1px solid #E8DDD2;
+      background: white;
+      font-size: 0.75rem;
+      color: #78716c;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+      display: none;
+    }
+    .all-dl-btn:hover { border-color: #0c0a09; color: #0c0a09; }
+    .live-dl-btn {
+      padding: 3px 10px;
+      border: 1px solid #E8DDD2;
+      border-radius: 9999px;
+      background: white;
+      font-size: 0.75rem;
+      color: #a8a29e;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .live-dl-btn:hover { border-color: #0c0a09; color: #0c0a09; }
+
+    .summary-card {
+      background: #FDFAF6;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 12px;
+      border: 1px solid #E8DDD2;
+      box-shadow: 0 2px 12px rgba(100,80,50,0.08);
+    }
+    .summary-card-num {
+      font-size: 0.72rem;
+      color: #78716c;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      font-family: 'Inter', sans-serif;
+      text-transform: uppercase;
+    }
+    .summary-card-text {
+      font-size: 1.05rem;
+      line-height: 1.85;
+      color: #0c0a09;
+      white-space: pre-wrap;
+    }
+    .summary-card textarea {
+      width: 100%;
+      font-size: 1.05rem;
+      line-height: 1.85;
+      border: 1.5px solid #0c0a09;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: inherit;
+      resize: vertical;
+      display: none;
+      color: #0c0a09;
+    }
+    .summary-card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+    .card-btn {
+      padding: 5px 14px;
+      border-radius: 9999px;
+      border: 1px solid #E8DDD2;
+      background: white;
+      font-size: 0.78rem;
+      cursor: pointer;
+      color: #78716c;
+      font-family: 'Inter', sans-serif;
+    }
+    .card-btn.edit { color: #292524; border-color: #292524; }
+    .card-btn.save { background: #0c0a09; color: white; border-color: #0c0a09; display: none; }
+    .card-btn.del { color: #E74C3C; border-color: #fca5a5; }
+
+    /* 補正テキストカード */
+    .summary-card.corrected {
+      border-color: #7B6CF6;
+      background: #F8F7FF;
+    }
+    .summary-card.corrected .summary-card-num {
+      color: #7B6CF6;
+    }
+
+    /* 全体まとめカード */
+    .summary-card.final {
+      border-color: #E8A020;
+      background: #FFFBF3;
+      margin-top: 4px;
+    }
+    .summary-card.final .summary-card-num {
+      color: #E8A020;
+    }
+
+    /* ---- 発言支援画面 ---- */
+    .chat-messages {
+      padding: 16px 20px;
+      height: calc(100vh - 210px);
+      overflow-y: auto;
+    }
+    .chat-msg { margin-bottom: 16px; line-height: 1.7; }
+    .chat-msg.user { text-align: right; }
+    .chat-msg.user .bubble {
+      display: inline-block;
+      background: #647D58;
+      color: white;
+      padding: 11px 16px;
+      border-radius: 18px 18px 4px 18px;
+      max-width: 82%;
+      text-align: left;
+      font-size: 1rem;
+    }
+    .chat-msg.ai .bubble {
+      display: inline-block;
+      background: #FDFAF6;
+      border: 1px solid #E8DDD2;
+      color: #1A1512;
+      padding: 11px 16px;
+      border-radius: 18px 18px 18px 4px;
+      max-width: 90%;
+      white-space: pre-wrap;
+      font-size: 1rem;
+    }
+    .choice-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .choice-chip {
+      padding: 6px 18px;
+      border: 1.5px solid #292524;
+      border-radius: 9999px;
+      background: white;
+      color: #292524;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .choice-chip:hover { background: #292524; color: white; }
+
+    .chat-input-area {
+      position: sticky;
+      bottom: 0;
+      background: #F5F0EA;
+      padding: 12px 20px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      border-top: 1px solid #E8DDD2;
+    }
+    .chat-input-area textarea {
+      flex: 1;
+      padding: 11px 14px;
+      border: 1px solid #E8DDD2;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-family: inherit;
+      resize: none;
+      height: 50px;
+      line-height: 1.5;
+      outline: none;
+      background: white;
+    }
+    .chat-input-area textarea:focus { border-color: #0c0a09; }
+    .icon-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .icon-btn.primary { background: #0c0a09; }
+    .icon-btn.secondary { background: white; border: 1px solid #E8DDD2; }
+    .icon-btn.recording { background: #FEF0EE; border: 1px solid #fca5a5; }
+    .icon-btn svg { width: 22px; height: 22px; }
+    .icon-btn.primary svg { fill: white; }
+    .icon-btn.secondary svg { fill: #78716c; }
+    .icon-btn.recording svg { fill: #E74C3C; }
+
+    .typing-indicator { color: #a8a29e; font-size: 0.9rem; padding: 4px 0 8px; }
+
+    /* ---- 履歴画面 ---- */
+    .history-list { padding: 16px 20px; }
+    .history-date {
+      font-size: 0.78rem;
+      color: #a8a29e;
+      margin: 16px 0 8px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .history-item {
+      background: #FDFAF6;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      border: 1px solid #E8DDD2;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(100,80,50,0.07);
+    }
+    .history-item-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0c0a09;
+      margin-bottom: 5px;
+    }
+    .history-item-preview {
+      font-size: 0.88rem;
+      color: #78716c;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .history-item-meta { font-size: 0.75rem; color: #d6d3d1; margin-top: 7px; }
+    .history-empty {
+      text-align: center;
+      color: #d6d3d1;
+      padding: 70px 20px;
+      font-size: 0.95rem;
+      line-height: 1.8;
+    }
+
+    /* ---- 設定画面 ---- */
+    .profile-section { padding: 20px; }
+    .plan-card {
+      background: linear-gradient(135deg, #1c1917, #0c0a09);
+      border-radius: 20px;
+      padding: 22px;
+      color: white;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .plan-card::before {
+      content: '';
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(196,230,218,0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .plan-card .plan-label {
+      font-size: 0.72rem;
+      opacity: 0.55;
+      margin-bottom: 4px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-family: 'Inter', sans-serif;
+    }
+    .plan-card .plan-name {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.9rem;
+      font-weight: 300;
+      margin-bottom: 12px;
+    }
+    .plan-card .plan-usage { font-size: 0.88rem; opacity: 0.65; margin-bottom: 14px; }
+    .plan-upgrade-btn {
+      padding: 9px 22px;
+      background: white;
+      color: #0c0a09;
+      border: none;
+      border-radius: 9999px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+    }
+    .menu-list {
+      background: #FDFAF6;
+      border-radius: 16px;
+      border: 1px solid #E8DDD2;
+      overflow: hidden;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 17px 20px;
+      border-bottom: 1px solid #F5F0EA;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #0c0a09;
+    }
+    .menu-item:last-child { border-bottom: none; }
+    .menu-item.danger { color: #E74C3C; }
+    .menu-arrow { color: #d6d3d1; font-size: 1.1rem; }
+
+    /* ---- 認証オーバーレイ ---- */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: #EDE7DF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 40px 24px;
+      overflow: hidden;
+    }
+    #authOverlay.hidden { display: none; }
+    .auth-orb-1 {
+      position: absolute;
+      top: -60px;
+      left: -80px;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(196,230,218,0.6) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .auth-orb-2 {
+      position: absolute;
+      bottom: -40px;
+      right: -60px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(220,210,242,0.55) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .auth-card {
+      background: #FDFAF6;
+      border-radius: 24px;
+      border: 1px solid #E8DDD2;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(100,80,50,0.1);
+      position: relative;
+      z-index: 1;
+    }
+    .auth-brand {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.7rem;
+      font-weight: 400;
+      color: #0c0a09;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    .auth-desc {
+      font-size: 0.88rem;
+      color: #78716c;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .auth-label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #292524;
+      display: block;
+      margin-bottom: 8px;
+      letter-spacing: 0.03em;
+    }
+    .auth-input {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1px solid #E8DDD2;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      margin-bottom: 16px;
+      background: #fafaf9;
+      color: #0c0a09;
+      transition: border-color 0.15s;
+    }
+    .auth-input:focus { border-color: #0c0a09; background: white; }
+    .auth-btn {
+      width: 100%;
+      padding: 14px;
+      background: #0c0a09;
+      color: white;
+      border: none;
+      border-radius: 9999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .auth-btn:hover { opacity: 0.82; }
+    .auth-btn:disabled { opacity: 0.45; cursor: default; }
+    .auth-sent-icon { font-size: 2rem; text-align: center; margin-bottom: 12px; }
+    .auth-sent-msg {
+      font-family: 'EB Garamond', serif;
+      font-size: 1.3rem;
+      font-weight: 400;
+      color: #0c0a09;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .auth-sent-sub {
+      font-size: 0.88rem;
+      color: #78716c;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    /* ==== HOME SCREEN ==== */
+    #recContainer { padding-bottom: 0; }
+    #homeScroll { padding-bottom: 180px; }
+
+    .meeting-header { padding: 16px 20px 14px; border-bottom: 1px solid #E8DDD2; background: #FDFAF6; }
+    .meeting-type-tag {
+      display: inline-block;
+      font-size: 0.72rem; font-weight: 600; color: #78716c;
+      background: #F5F0EA; border: 1px solid #E8DDD2;
+      border-radius: 9999px; padding: 2px 10px;
+      letter-spacing: 0.06em; margin-bottom: 8px;
+    }
+    .meeting-title-row { display: flex; align-items: center; gap: 8px; }
+    .meeting-title-input {
+      flex: 1; border: none;
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.5rem; font-weight: 400; color: #0c0a09;
+      background: transparent; outline: none; padding: 0;
+    }
+    .meeting-title-input::placeholder { color: #d6d3d1; }
+    .meeting-edit-btn { border: none; background: none; cursor: pointer; color: #a8a29e; padding: 4px; }
+    .meeting-meta {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 6px; font-size: 0.82rem; color: #78716c;
+    }
+    .meeting-meta-item { display: flex; align-items: center; gap: 4px; }
+    .meeting-meta-sep { color: #d6d3d1; }
+
+    .audio-player-card {
+      margin: 12px 20px;
+      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 14px;
+      padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 12px rgba(100,80,50,0.08);
+    }
+    .ap-play-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #0c0a09; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ap-play-btn:disabled { background: #E8DDD2; cursor: default; }
+    .ap-play-btn svg { fill: white; margin-left: 2px; }
+    .ap-play-btn:disabled svg { fill: #a8a29e; }
+    .ap-rec-badge { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .audio-player-card .audio-visualizer { flex: 1; height: 40px; }
+    .ap-speed {
+      font-size: 0.78rem; color: #a8a29e; flex-shrink: 0;
+      background: #F5F0EA; padding: 2px 8px; border-radius: 6px;
+    }
+
+    .ai-summary-section { margin: 0 20px; padding: 16px 0 8px; border-top: 1px solid #E8DDD2; }
+    .ai-summary-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .ai-summary-label { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 600; color: #0c0a09; }
+    .regen-btn {
+      font-size: 0.75rem; color: #78716c; background: none;
+      border: 1px solid #E8DDD2; border-radius: 9999px; padding: 3px 10px;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+    }
+    .regen-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .stat-cards-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .stat-card {
+      flex: 1; background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 14px;
+      padding: 14px 8px; display: flex; flex-direction: column;
+      align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(100,80,50,0.07);
+    }
+    .stat-icon-wrap {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stat-decision { background: #E4F2E8; }
+    .stat-todo    { background: #FEF0D8; }
+    .stat-confirm { background: #EEEFFE; }
+    .stat-label { font-size: 0.7rem; color: #8B7B6B; text-align: center; line-height: 1.3; }
+    .stat-num {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.6rem; font-weight: 400; color: #1A1512; line-height: 1;
+    }
+    .stat-num small { font-size: 0.75rem; color: #A89880; font-family: 'Inter', sans-serif; }
+    .summary-body { font-size: 0.95rem; line-height: 1.75; color: #292524; }
+    .empty-placeholder { color: #d6d3d1; font-size: 0.9rem; text-align: center; padding: 12px 0; }
+
+    .transcript-section { margin: 0 20px; padding: 16px 0 8px; border-top: 1px solid #E8DDD2; }
+    .transcript-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .transcript-label { font-size: 0.85rem; font-weight: 600; color: #1A1512; }
+    .transcript-body { font-size: 0.95rem; line-height: 1.8; color: #3D2F25; white-space: pre-wrap; min-height: 40px; }
+
+    /* タイムライン表示 */
+    .transcript-timeline { display: flex; flex-direction: column; gap: 0; min-height: 40px; }
+    .transcript-entry {
+      display: flex; gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid #F0E8DE;
+    }
+    .transcript-entry:last-child { border-bottom: none; }
+    .transcript-ts {
+      font-size: 0.72rem; color: #A89880; font-variant-numeric: tabular-nums;
+      width: 36px; flex-shrink: 0; padding-top: 2px; font-family: 'Inter', sans-serif;
+    }
+    .transcript-text { font-size: 0.92rem; line-height: 1.7; color: #3D2F25; flex: 1; }
+
+    .home-chat-bar {
+      position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      background: #FDFAF6; border-top: 1px solid #E8DDD2;
+      padding: 10px 16px 12px; z-index: 50;
+    }
+    .home-chat-chips { display: flex; gap: 6px; margin-top: 6px; overflow-x: auto; scrollbar-width: none; }
+    .home-chat-chips::-webkit-scrollbar { display: none; }
+    .home-chip {
+      white-space: nowrap; padding: 5px 12px;
+      border: 1px solid #E8DDD2; border-radius: 9999px;
+      background: white; font-size: 0.78rem; color: #78716c;
+      cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s;
+    }
+    .home-chip:hover { border-color: #0c0a09; color: #0c0a09; }
+    .home-chat-input-row {
+      display: flex; align-items: center; gap: 8px;
+      background: #EDE7DF; border-radius: 12px; padding: 10px 14px;
+    }
+    .home-chat-sparkle { color: #7B6CF6; font-size: 0.9rem; flex-shrink: 0; }
+    .home-chat-input-row input {
+      flex: 1; border: none; background: transparent;
+      font-size: 0.9rem; font-family: 'Inter', sans-serif; outline: none; color: #0c0a09;
+    }
+    .home-chat-input-row input::placeholder { color: #a8a29e; }
+    .home-chat-send {
+      border: none; background: #647D58; color: white;
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    .rec-idle .rec-bottom-bar { display: none; }
+
+    .home-chat-response {
+      background: white;
+      border: 1px solid #E8DDD2;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.9rem;
+      line-height: 1.75;
+      color: #292524;
+      white-space: pre-wrap;
+      margin-bottom: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .home-chat-response.loading { color: #a8a29e; }
+    .show-more-btn {
+      width: 100%; padding: 8px 0; border: none; background: none;
+      font-size: 0.82rem; color: #647D58; cursor: pointer;
+      font-family: 'Inter', sans-serif; text-align: center; margin-top: 4px;
+    }
+    .show-more-btn:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- 認証オーバーレイ -->
+<div id="authOverlay">
+  <div class="auth-orb-1"></div>
+  <div class="auth-orb-2"></div>
+  <div class="auth-card">
+    <div class="auth-brand">コミュニケーション支援 AI</div>
+    <p class="auth-desc">音声認識・要約・発言支援ツール</p>
+
+    <div id="authForm">
+      <label class="auth-label" for="authEmail">メールアドレス</label>
+      <input type="email" id="authEmail" class="auth-input" placeholder="you@example.com" autocomplete="email">
+      <button id="authBtn" class="auth-btn">ログインリンクを送る</button>
+    </div>
+
+    <div id="authSent" style="display:none">
+      <div class="auth-sent-icon">📬</div>
+      <div class="auth-sent-msg">リンクを送りました</div>
+      <p class="auth-sent-sub">メールを確認して、リンクをクリックしてください。<br>このページに戻ると自動でログインされます。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ホーム -->
+<div class="screen active" id="screen-record">
+  <div class="screen-header">
+    <h1>ホーム</h1>
+    <span class="plan-badge" id="planBadge">FREE</span>
+  </div>
+
+  <div id="recContainer" class="rec-idle">
+
+    <div id="homeScroll">
+
+      <!-- 会議ヘッダー -->
+      <div class="meeting-header">
+        <span class="meeting-type-tag">会議</span>
+        <div class="meeting-title-row">
+          <input type="text" id="topicInput" class="meeting-title-input" placeholder="タイトルを入力">
+          <button class="meeting-edit-btn" aria-label="編集">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+        <div class="meeting-meta show-on-active">
+          <span class="meeting-meta-item">
+            <span class="rec-dot" id="recDot"></span>
+            <span id="recStatusText">録音中</span>
+          </span>
+          <span class="meeting-meta-sep">·</span>
+          <span class="meeting-meta-item" id="recTimer">00:00</span>
+        </div>
+      </div>
+
+      <!-- 音声プレイヤー / ビジュアライザー -->
+      <div class="audio-player-card">
+        <button class="ap-play-btn show-on-idle" disabled>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="ap-rec-badge show-on-active">
+          <span class="rec-dot" style="pointer-events:none"></span>
+        </div>
+        <canvas class="audio-visualizer" id="audioVisualizer" height="40"></canvas>
+        <span class="ap-speed">1.0x</span>
+      </div>
+
+      <!-- AI要約 -->
+      <div class="ai-summary-section">
+        <div class="ai-summary-header">
+          <span class="ai-summary-label">✦ AI要約</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="all-dl-btn" id="allDownloadBtn">↓ すべてDL</button>
+            <button class="regen-btn" id="regenBtn" disabled>再生成 ↺</button>
+          </div>
+        </div>
+        <div class="stat-cards-row">
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-decision">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4A9B5E" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span class="stat-label">決定事項</span>
+            <span class="stat-num" id="decisionCount">0<small>件</small></span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-todo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#D4850A" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <span class="stat-label">TODO</span>
+            <span class="stat-num" id="todoCount">0<small>件</small></span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap stat-confirm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#5B5BD6" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <span class="stat-label">要確認事項</span>
+            <span class="stat-num" id="confirmCount">0<small>件</small></span>
+          </div>
+        </div>
+        <div class="summary-body">
+          <p class="empty-placeholder" id="summaryPlaceholder">録音後にAIが要約を生成します</p>
+          <div id="summariesList"></div>
+          <button id="showMoreSummaries" class="show-more-btn" style="display:none">中間要約を見る ↓</button>
+        </div>
+      </div>
+
+      <!-- 文字起こし -->
+      <div class="transcript-section">
+        <div class="transcript-header">
+          <span class="transcript-label">文字起こし</span>
+          <button class="live-dl-btn" id="liveDownloadBtn">↓ DL</button>
+        </div>
+        <div id="liveBox" class="transcript-timeline">
+          <p class="empty-placeholder">録音を開始すると、ここに文字起こしが表示されます</p>
+        </div>
+      </div>
+
+    </div><!-- /#homeScroll -->
+
+    <!-- チャット入力バー（待機中のみ） -->
+    <div class="home-chat-bar show-on-idle">
+      <div id="homeChatResponse" class="home-chat-response" style="display:none"></div>
+      <div class="home-chat-input-row">
+        <span class="home-chat-sparkle">✦</span>
+        <input type="text" id="homeChatInput" placeholder="この会話について質問してみましょう">
+        <button class="home-chat-send" id="homeChatSend">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="home-chat-chips">
+        <button class="home-chip" data-q="決定事項を一覧にしてください">決定事項だけ教えて</button>
+        <button class="home-chip" data-q="TODOやアクションアイテムを一覧にしてください">TODOを一覧にして</button>
+        <button class="home-chip" data-q="リスクや懸念点を教えてください">リスクや懸念点は？</button>
+      </div>
+    </div>
+
+    <!-- 録音コントロールバー（録音中・一時停止中） -->
+    <div class="rec-bottom-bar">
+      <div class="rec-controls show-on-recording">
+        <button class="rec-ctrl-btn pause" id="pauseBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          一時停止
+        </button>
+        <button class="rec-ctrl-btn finish" id="finishBtn" aria-label="録音を完了">
+          <span class="stop-square"></span>
+        </button>
+      </div>
+      <div class="rec-controls show-on-paused">
+        <button class="rec-ctrl-btn resume" id="resumeBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          再開
+        </button>
+        <button class="rec-ctrl-btn finish" id="finishBtn2" aria-label="録音を完了">
+          <span class="stop-square"></span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 発言支援 -->
+<div class="screen" id="screen-chat">
+  <div class="screen-header">
+    <h1>発言支援</h1>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg ai">
+      <span class="bubble">言いたいことをキーワードや文章で入力してください。</span>
+    </div>
+  </div>
+  <div class="chat-input-area">
+    <button class="icon-btn secondary" id="chatMicBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v7a2 2 0 0 1-4 0V5a2 2 0 0 1 2-2zm-6.25 9a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12 18.25a5.5 5.5 0 0 0 5.5-5.5.75.75 0 0 1 1.5 0A7 7 0 0 1 12.75 19.7V22h1.75a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5H11.25V19.7A7 7 0 0 1 5 12.75.75.75 0 0 1 5.75 12z"/></svg>
+    </button>
+    <textarea id="chatInput" placeholder="キーワードや文章を入力..."></textarea>
+    <button class="icon-btn primary" id="chatSendBtn">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- 履歴 -->
+<div class="screen" id="screen-history">
+  <div class="screen-header">
+    <h1>履歴</h1>
+  </div>
+  <div class="history-list" id="historyList">
+    <div class="history-empty">まだ履歴がありません。<br>録音・要約すると、ここに保存されます。</div>
+  </div>
+</div>
+
+<!-- プロフィール -->
+<div class="screen" id="screen-profile">
+  <div class="screen-header">
+    <h1>プロフィール</h1>
+  </div>
+  <div class="profile-section">
+    <div class="plan-card">
+      <div class="plan-label">現在のプラン</div>
+      <div class="plan-name">FREE</div>
+      <div class="plan-usage">今月の使用: 0分 / 3時間</div>
+      <button class="plan-upgrade-btn">PRO にアップグレード →</button>
+    </div>
+    <div class="menu-list">
+      <div class="menu-item"><span>フォントサイズ</span><span class="menu-arrow">›</span></div>
+      <div class="menu-item"><span>通知設定</span><span class="menu-arrow">›</span></div>
+      <div class="menu-item"><span>利用規約</span><span class="menu-arrow">›</span></div>
+      <div class="menu-item"><span>プライバシーポリシー</span><span class="menu-arrow">›</span></div>
+      <div class="menu-item danger" id="logoutBtn"><span>ログアウト</span><span class="menu-arrow">›</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ボトムナビゲーション -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-screen="record">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    <span>ホーム</span>
+  </button>
+  <button class="nav-item" data-screen="history">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+    <span>履歴</span>
+  </button>
+  <button class="nav-rec-fab" id="navRecBtn">
+    <div class="fab-btn">
+      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v7a2 2 0 0 1-4 0V5a2 2 0 0 1 2-2zm-6.25 9a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12 18.25a5.5 5.5 0 0 0 5.5-5.5.75.75 0 0 1 1.5 0A7 7 0 0 1 12.75 19.7V22h1.75a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5H11.25V19.7A7 7 0 0 1 5 12.75.75.75 0 0 1 5.75 12z"/></svg>
+    </div>
+    <span>録音</span>
+  </button>
+  <button class="nav-item" data-screen="chat">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+    <span>チャット</span>
+  </button>
+  <button class="nav-item" data-screen="profile">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    <span>プロフィール</span>
+  </button>
+</nav>
+
+<script>
+  // ---- Supabase 認証 ----
+  let supabaseClient = null;
+  let currentToken = null;
+  let currentUserId = null;
+
+  function authHeaders() {
+    const h = { "Content-Type": "application/json" };
+    if (currentToken) h["Authorization"] = "Bearer " + currentToken;
+    return h;
+  }
+
+  function showAuth() {
+    document.getElementById("authOverlay").classList.remove("hidden");
+  }
+
+  function showApp() {
+    document.getElementById("authOverlay").classList.add("hidden");
+    loadHistoryFromStorage();
+  }
+
+  async function initAuth() {
+    let config = null;
+    try {
+      config = await fetch("/config").then(r => r.json());
+    } catch {}
+
+    if (!config?.auth_enabled || !config?.supabase_url) {
+      showApp();
+      return;
+    }
+
+    // Supabase JS を必要なときだけ動的ロード
+    if (!window.supabase) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    supabaseClient = window.supabase.createClient(config.supabase_url, config.supabase_anon_key);
+
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        currentToken = session.access_token;
+        currentUserId = session.user.id;
+        showApp();
+      } else if (event === "SIGNED_OUT") {
+        currentToken = null;
+        currentUserId = null;
+        showAuth();
+      }
+    });
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      currentToken = session.access_token;
+      currentUserId = session.user.id;
+      showApp();
+    } else {
+      showAuth();
+    }
+  }
+
+  // 送信ボタン
+  document.getElementById("authBtn").addEventListener("click", async () => {
+    if (!supabaseClient) return;
+    const email = document.getElementById("authEmail").value.trim();
+    if (!email) return;
+    const btn = document.getElementById("authBtn");
+    btn.disabled = true;
+    btn.textContent = "送信中...";
+    const { error } = await supabaseClient.auth.signInWithOtp({ email });
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = "ログインリンクを送る";
+      alert("エラー: " + error.message);
+    } else {
+      document.getElementById("authForm").style.display = "none";
+      document.getElementById("authSent").style.display = "block";
+    }
+  });
+
+  document.getElementById("authEmail").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("authBtn").click();
+  });
+
+  // ログアウト
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    if (supabaseClient) await supabaseClient.auth.signOut();
+    else showAuth();
+  });
+
+  // ---- アプリ状態 ----
+  let sessionId = "session_" + Date.now();
+  let currentScene = "default";
+  let recognition = null;
+  let isRecording = false;
+  let finalTranscript = "";
+  let lastProcessedIndex = 0;
+  let summarizedLength = 0;
+  let summaryLevel = 2;
+  let historyLog = [];
+  let recStartTime = null;
+  let transcriptEntries = [];
+
+  // ---- ビジュアライザー ----
+  let audioCtx = null;
+  let analyser = null;
+  let micStream = null;
+  let vizAnimFrame = null;
+
+  async function setupVisualizer() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      audioCtx.createMediaStreamSource(micStream).connect(analyser);
+    } catch (e) {
+      console.warn("ビジュアライザー初期化失敗:", e);
+    }
+  }
+
+  function startVisualizer() {
+    if (!analyser) return;
+    const canvas = document.getElementById("audioVisualizer");
+    canvas.width = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 300;
+    const ctx = canvas.getContext("2d");
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const BAR_COUNT = 24;
+    const BAR_W = 3;
+    const gap = (canvas.width - BAR_COUNT * BAR_W) / (BAR_COUNT + 1);
+
+    function draw() {
+      vizAnimFrame = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const val = dataArray[Math.floor(i * bufferLength / BAR_COUNT)];
+        const ratio = val / 255;
+        const barH = Math.max(3, ratio * canvas.height * 0.92);
+        const x = gap + i * (BAR_W + gap);
+        const y = (canvas.height - barH) / 2;
+        ctx.fillStyle = `rgba(123, 108, 246, ${0.4 + ratio * 0.6})`;
+        ctx.beginPath();
+        ctx.roundRect(x, y, BAR_W, barH, [2]);
+        ctx.fill();
+      }
+    }
+    draw();
+  }
+
+  function stopVisualizer() {
+    if (vizAnimFrame) { cancelAnimationFrame(vizAnimFrame); vizAnimFrame = null; }
+  }
+
+  function drawPausedDots() {
+    const canvas = document.getElementById("audioVisualizer");
+    if (!canvas.width) canvas.width = canvas.offsetWidth || 300;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const BAR_COUNT = 24;
+    const BAR_W = 3;
+    const gap = (canvas.width - BAR_COUNT * BAR_W) / (BAR_COUNT + 1);
+    ctx.fillStyle = "#D0D0D0";
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const x = gap + i * (BAR_W + gap);
+      const y = (canvas.height - BAR_W) / 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, BAR_W, BAR_W, [2]);
+      ctx.fill();
+    }
+  }
+
+  function teardownVisualizer() {
+    stopVisualizer();
+    const canvas = document.getElementById("audioVisualizer");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    analyser = null;
+  }
+
+  // ---- ナビゲーション ----
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.screen;
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("screen-" + target).classList.add("active");
+      if (target === "history") renderHistory();
+    });
+  });
+
+  // ---- 詳しさ設定（UIにボタンがある場合のみ有効） ----
+  document.querySelectorAll(".settings-btn[data-group='level']").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".settings-btn[data-group='level']").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      summaryLevel = parseInt(btn.dataset.value);
+    });
+  });
+
+  // ---- ホームチャット（会議内容への質問） ----
+  async function sendHomeChat(question) {
+    if (!question.trim()) return;
+    if (!finalTranscript.trim()) {
+      const resp = document.getElementById("homeChatResponse");
+      resp.style.display = "block";
+      resp.textContent = "まず録音して文字起こしを取得してください。";
+      return;
+    }
+    const resp = document.getElementById("homeChatResponse");
+    resp.style.display = "block";
+    resp.className = "home-chat-response loading";
+    resp.textContent = "AIが考えています...";
+    document.getElementById("homeChatInput").value = "";
+    try {
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ transcript: finalTranscript, question, scene: currentScene }),
+      });
+      const data = await res.json();
+      resp.className = "home-chat-response";
+      resp.textContent = data.reply;
+    } catch {
+      resp.className = "home-chat-response";
+      resp.textContent = "エラーが発生しました。";
+    }
+  }
+
+  document.querySelectorAll(".home-chip").forEach(btn => {
+    btn.addEventListener("click", () => sendHomeChat(btn.dataset.q));
+  });
+
+  document.getElementById("homeChatSend").addEventListener("click", () => {
+    sendHomeChat(document.getElementById("homeChatInput").value);
+  });
+
+  document.getElementById("homeChatInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") sendHomeChat(e.target.value);
+  });
+
+  // ---- 要約再生成 ----
+  document.getElementById("regenBtn").addEventListener("click", () => {
+    if (!finalTranscript.trim()) return;
+    document.getElementById("summariesList").innerHTML = "";
+    document.getElementById("summaryPlaceholder").style.display = "none";
+    document.getElementById("allDownloadBtn").style.display = "block";
+    triggerFinalSummary();
+    triggerCorrection();
+  });
+
+// ---- ダウンロード ----
+  function downloadFile(content, filename) {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function getBaseFilename() {
+    const topic = document.getElementById("topicInput").value.trim() || "録音";
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    return `${topic}_${date}`;
+  }
+
+  document.getElementById("liveDownloadBtn").addEventListener("click", () => {
+    if (!finalTranscript.trim()) return;
+    downloadFile(finalTranscript, getBaseFilename() + "_文字起こし.txt");
+  });
+
+  document.getElementById("allDownloadBtn").addEventListener("click", () => {
+    const parts = [];
+    const topic = document.getElementById("topicInput").value.trim();
+    if (topic) parts.push(`【タイトル】${topic}`);
+    if (finalTranscript.trim()) {
+      parts.push("━━ 文字起こし ━━\n\n" + finalTranscript);
+    }
+    document.querySelectorAll("#summariesList .summary-card").forEach(card => {
+      const label = card.querySelector(".summary-card-num").textContent.trim();
+      const text = card.querySelector(".summary-card-text").textContent.trim();
+      if (text) parts.push(`━━ ${label} ━━\n\n${text}`);
+    });
+    if (!parts.length) return;
+    downloadFile(parts.join("\n\n\n"), getBaseFilename() + "_全内容.txt");
+  });
+
+  // ---- 履歴（localStorage永続化） ----
+  function loadHistoryFromStorage() {
+    try {
+      const key = "comm_history_" + (currentUserId || "local");
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        historyLog = JSON.parse(saved).map(item => ({ ...item, time: new Date(item.time) }));
+      }
+    } catch {}
+  }
+
+  function persistHistory() {
+    try {
+      const key = "comm_history_" + (currentUserId || "local");
+      localStorage.setItem(key, JSON.stringify(historyLog.slice(0, 200)));
+    } catch {}
+  }
+
+  function saveToHistory(type, content, topic) {
+    historyLog.unshift({ type, content, topic: topic || "無題", time: new Date() });
+    persistHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById("historyList");
+    if (historyLog.length === 0) {
+      list.innerHTML = '<div class="history-empty">まだ履歴がありません。<br>録音・要約すると、ここに保存されます。</div>';
+      return;
+    }
+    list.innerHTML = "";
+    let lastDate = "";
+    historyLog.forEach(item => {
+      const dateStr = item.time.toLocaleDateString("ja-JP");
+      if (dateStr !== lastDate) {
+        const d = document.createElement("div");
+        d.className = "history-date";
+        d.textContent = dateStr;
+        list.appendChild(d);
+        lastDate = dateStr;
+      }
+      const el = document.createElement("div");
+      el.className = "history-item";
+      const timeStr = item.time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      el.innerHTML = `
+        <div class="history-item-title">${item.topic}</div>
+        <div class="history-item-preview">${item.content.replace(/\n/g, " ")}</div>
+        <div class="history-item-meta">${timeStr} · ${item.type === "summary" ? "要約" : "発言支援"}</div>`;
+      list.appendChild(el);
+    });
+  }
+
+  // ---- 補正テキスト ----
+  async function triggerCorrection() {
+    if (!finalTranscript.trim()) return;
+    const topic = document.getElementById("topicInput").value.trim();
+    const card = addSummaryCard("補正中...", true);
+    card.classList.add("corrected");
+    card.querySelector(".summary-card-num").textContent = "━ 補正テキスト ━";
+    try {
+      const res = await fetch("/summarize", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ text: finalTranscript, scene: currentScene, level: summaryLevel, mode: "correct", topic }),
+      });
+      const data = await res.json();
+      card.querySelector(".summary-card-text").textContent = data.summary;
+      card.querySelector("textarea").value = data.summary;
+      card.querySelector(".summary-card-text").style.opacity = "1";
+    } catch {
+      card.querySelector(".summary-card-text").textContent = "エラーが発生しました。";
+    }
+  }
+
+  // ---- 全体まとめ ----
+  async function triggerFinalSummary() {
+    if (!finalTranscript.trim()) return;
+    const topic = document.getElementById("topicInput").value.trim();
+    const card = addSummaryCard("全体まとめを生成中...", true);
+    card.classList.add("final");
+    card.querySelector(".summary-card-num").textContent = "━ 全体まとめ ━";
+    try {
+      const res = await fetch("/summarize", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ text: finalTranscript, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
+      });
+      const data = await res.json();
+      card.querySelector(".summary-card-text").textContent = data.summary;
+      card.querySelector("textarea").value = data.summary;
+      card.querySelector(".summary-card-text").style.opacity = "1";
+      saveToHistory("summary", data.summary, (topic || "録音") + " 全体まとめ");
+      updateStatCards(data.summary);
+      document.getElementById("regenBtn").disabled = false;
+      collapseIntermediates();
+    } catch {
+      card.querySelector(".summary-card-text").textContent = "エラーが発生しました。";
+    }
+  }
+
+  function collapseIntermediates() {
+    const chunks = document.querySelectorAll("#summariesList .summary-card:not(.final):not(.corrected)");
+    const btn = document.getElementById("showMoreSummaries");
+    if (chunks.length > 0) {
+      chunks.forEach(c => c.style.display = "none");
+      btn.style.display = "block";
+      btn.textContent = `中間要約を見る（${chunks.length}件）↓`;
+    }
+  }
+
+  document.getElementById("showMoreSummaries").addEventListener("click", () => {
+    document.querySelectorAll("#summariesList .summary-card:not(.final):not(.corrected)").forEach(c => c.style.display = "");
+    document.getElementById("showMoreSummaries").style.display = "none";
+  });
+
+  function updateStatCards(summaryText) {
+    const decisions = (summaryText.match(/決定|合意|確定|承認/g) || []).length;
+    const todos = (summaryText.match(/TODO|タスク|アクション|対応|担当|実施/g) || []).length;
+    const confirms = (summaryText.match(/要確認|不明|確認|検討|検討|？|要確認/g) || []).length;
+    document.getElementById("decisionCount").innerHTML = `${decisions}<small>件</small>`;
+    document.getElementById("todoCount").innerHTML = `${todos}<small>件</small>`;
+    document.getElementById("confirmCount").innerHTML = `${confirms}<small>件</small>`;
+  }
+
+  // ---- 要約 ----
+  async function triggerSummarize(text) {
+    if (!text.trim()) return;
+    const topic = document.getElementById("topicInput").value.trim();
+    const card = addSummaryCard("要約中...", true);
+    try {
+      const res = await fetch("/summarize", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ text, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
+      });
+      const data = await res.json();
+      card.querySelector(".summary-card-text").textContent = data.summary;
+      card.querySelector("textarea").value = data.summary;
+      card.querySelector(".summary-card-text").style.opacity = "1";
+      saveToHistory("summary", data.summary, topic || "録音");
+    } catch {
+      card.querySelector(".summary-card-text").textContent = "エラーが発生しました。再試行してください。";
+    }
+  }
+
+  function addSummaryCard(text, loading = false) {
+    const list = document.getElementById("summariesList");
+    const count = list.querySelectorAll(".summary-card").length + 1;
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    card.innerHTML = `
+      <div class="summary-card-num">要約 ${count}</div>
+      <div class="summary-card-text" style="opacity:${loading ? 0.4 : 1}">${text}</div>
+      <textarea rows="4">${text}</textarea>
+      <div class="summary-card-actions">
+        <button class="card-btn edit">編集</button>
+        <button class="card-btn save">保存</button>
+        <button class="card-btn dl">↓ DL</button>
+        <button class="card-btn del">削除</button>
+      </div>`;
+    card.querySelector(".edit").addEventListener("click", () => {
+      card.querySelector(".summary-card-text").style.display = "none";
+      card.querySelector("textarea").style.display = "block";
+      card.querySelector(".edit").style.display = "none";
+      card.querySelector(".save").style.display = "inline";
+    });
+    card.querySelector(".save").addEventListener("click", () => {
+      const val = card.querySelector("textarea").value;
+      card.querySelector(".summary-card-text").textContent = val;
+      card.querySelector(".summary-card-text").style.display = "block";
+      card.querySelector("textarea").style.display = "none";
+      card.querySelector(".edit").style.display = "inline";
+      card.querySelector(".save").style.display = "none";
+    });
+    card.querySelector(".dl").addEventListener("click", () => {
+      const label = card.querySelector(".summary-card-num").textContent.trim();
+      const content = card.querySelector(".summary-card-text").textContent.trim();
+      const safeLabel = label.replace(/[\/\\:*?"<>|]/g, "");
+      downloadFile(`${label}\n\n${content}`, getBaseFilename() + `_${safeLabel}.txt`);
+    });
+    card.querySelector(".del").addEventListener("click", () => card.remove());
+    list.appendChild(card);
+    list.scrollTop = list.scrollHeight;
+    document.getElementById("summaryPlaceholder").style.display = "none";
+    document.getElementById("allDownloadBtn").style.display = "block";
+    return card;
+  }
+
+  // ---- 録音画面 状態管理 ----
+  let recState = "idle"; // "idle" | "recording" | "paused"
+  let recSeconds = 0;
+  let timerInterval = null;
+  let liveVisible = true;
+
+  function setRecState(state) {
+    recState = state;
+    const c = document.getElementById("recContainer");
+    c.classList.remove("rec-idle", "rec-recording", "rec-paused");
+    c.classList.add("rec-" + state);
+    const dot = document.getElementById("recDot");
+    const txt = document.getElementById("recStatusText");
+    if (state === "paused") {
+      dot.classList.add("paused");
+      txt.textContent = "一時停止中";
+    } else {
+      dot.classList.remove("paused");
+      txt.textContent = "録音中";
+    }
+  }
+
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      recSeconds++;
+      const m = String(Math.floor(recSeconds / 60)).padStart(2, "0");
+      const s = String(recSeconds % 60).padStart(2, "0");
+      document.getElementById("recTimer").textContent = m + ":" + s;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  // liveToggleBtn は現UIに存在しないため削除
+
+  // ---- 音声認識（録音タブ） ----
+  if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = "ja-JP";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    function renderTranscriptTimeline(interim) {
+      const box = document.getElementById("liveBox");
+      box.innerHTML = "";
+      transcriptEntries.forEach(entry => {
+        const row = document.createElement("div");
+        row.className = "transcript-entry";
+        row.innerHTML = `<span class="transcript-ts">${entry.ts}</span><span class="transcript-text">${entry.text}</span>`;
+        box.appendChild(row);
+      });
+      if (interim) {
+        const row = document.createElement("div");
+        row.className = "transcript-entry";
+        row.style.opacity = "0.45";
+        row.innerHTML = `<span class="transcript-ts">…</span><span class="transcript-text">${interim}</span>`;
+        box.appendChild(row);
+      }
+    }
+
+    recognition.onresult = e => {
+      let interim = "";
+      for (let i = lastProcessedIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          const elapsed = recStartTime ? Math.floor((Date.now() - recStartTime) / 1000) : 0;
+          const ts = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
+          transcriptEntries.push({ ts, text: e.results[i][0].transcript });
+          finalTranscript += e.results[i][0].transcript;
+          lastProcessedIndex = i + 1;
+        } else {
+          interim = e.results[i][0].transcript;
+        }
+      }
+      renderTranscriptTimeline(interim);
+
+      const unsummarized = finalTranscript.slice(summarizedLength);
+      if ((unsummarized.match(/。/g) || []).length >= 4) {
+        summarizedLength += unsummarized.length;
+        triggerSummarize(unsummarized);
+      }
+    };
+
+    recognition.onend = () => {
+      if (isRecording) { lastProcessedIndex = 0; recognition.start(); }
+    };
+    recognition.onerror = () => {
+      if (isRecording) setTimeout(() => recognition.start(), 1000);
+    };
+
+    // NAV FAB → 録音開始/停止
+    document.getElementById("navRecBtn").addEventListener("click", async () => {
+      if (!recognition) return;
+      if (recState === "idle") {
+        // ホームに遷移してから録音開始
+        document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+        document.querySelector("[data-screen='record']").classList.add("active");
+        document.getElementById("screen-record").classList.add("active");
+
+        finalTranscript = "";
+        lastProcessedIndex = 0;
+        summarizedLength = 0;
+        recSeconds = 0;
+        transcriptEntries = [];
+        recStartTime = Date.now();
+        document.getElementById("recTimer").textContent = "00:00";
+        document.getElementById("liveBox").innerHTML = "";
+        await setupVisualizer();
+        isRecording = true;
+        setRecState("recording");
+        startTimer();
+        requestAnimationFrame(startVisualizer);
+        recognition.start();
+        document.getElementById("navRecBtn").classList.add("recording");
+      } else {
+        // 録音中 or 一時停止中 → 停止
+        finishRecording();
+      }
+    });
+
+
+    // recording → paused
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+      isRecording = false;
+      recognition.stop();
+      stopTimer();
+      stopVisualizer();
+      setRecState("paused");
+      drawPausedDots();
+    });
+
+    // paused → recording
+    document.getElementById("resumeBtn").addEventListener("click", () => {
+      isRecording = true;
+      lastProcessedIndex = 0;
+      setRecState("recording");
+      startTimer();
+      startVisualizer();
+      recognition.start();
+    });
+
+    // finish from any active state
+    function finishRecording() {
+      isRecording = false;
+      recognition.stop();
+      stopTimer();
+      teardownVisualizer();
+      const remaining = finalTranscript.slice(summarizedLength);
+      if (remaining.trim()) triggerSummarize(remaining);
+      if (finalTranscript.trim()) {
+        triggerCorrection();
+        triggerFinalSummary();
+      }
+      setRecState("idle");
+      document.getElementById("navRecBtn").classList.remove("recording");
+    }
+    document.getElementById("finishBtn").addEventListener("click", finishRecording);
+    document.getElementById("finishBtn2").addEventListener("click", finishRecording);
+
+  } else {
+    const navRec = document.getElementById("navRecBtn");
+    if (navRec) { navRec.style.opacity = "0.4"; navRec.title = "このブラウザは音声入力に対応していません"; }
+  }
+
+  // ---- チャット ----
+  function addChatMsg(role, text, choices = []) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = `chat-msg ${role}`;
+    const bubble = document.createElement("span");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    div.appendChild(bubble);
+    if (choices.length > 0) {
+      const row = document.createElement("div");
+      row.className = "choice-row";
+      choices.forEach((_, i) => {
+        const chip = document.createElement("button");
+        chip.className = "choice-chip";
+        chip.textContent = String(i + 1);
+        chip.addEventListener("click", () => sendChat(String(i + 1)));
+        row.appendChild(chip);
+      });
+      div.appendChild(row);
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendChat(text) {
+    if (!text.trim()) return;
+    addChatMsg("user", text);
+    document.getElementById("chatInput").value = "";
+    document.getElementById("chatSendBtn").disabled = true;
+    const typing = document.createElement("div");
+    typing.className = "typing-indicator";
+    typing.textContent = "AIが考えています...";
+    document.getElementById("chatMessages").appendChild(typing);
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ session_id: sessionId, message: text, scene: currentScene }),
+      });
+      const data = await res.json();
+      typing.remove();
+      const choices = [...data.reply.matchAll(/^[１1２2３3][\.\．]/gm)].map((_, i) => i);
+      addChatMsg("ai", data.reply, choices);
+      saveToHistory("chat", data.reply);
+    } catch {
+      typing.remove();
+      addChatMsg("ai", "エラーが発生しました。");
+    }
+    document.getElementById("chatSendBtn").disabled = false;
+  }
+
+  document.getElementById("chatSendBtn").addEventListener("click", () => {
+    sendChat(document.getElementById("chatInput").value);
+  });
+  document.getElementById("chatInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); }
+  });
+
+  // 起動時に認証チェック
+  initAuth();
+
+  window.addEventListener("beforeunload", e => {
+    if (isRecording || finalTranscript.trim()) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  // チャット用マイク
+  let chatRecording = false;
+  document.getElementById("chatMicBtn").addEventListener("click", () => {
+    const btn = document.getElementById("chatMicBtn");
+    if (!recognition) return;
+    if (chatRecording) {
+      chatRecording = false;
+      recognition.stop();
+      btn.classList.remove("recording");
+    } else {
+      chatRecording = true;
+      btn.classList.add("recording");
+      const savedContinuous = recognition.continuous;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = e => {
+        document.getElementById("chatInput").value = e.results[0][0].transcript;
+      };
+      recognition.onend = () => {
+        chatRecording = false;
+        btn.classList.remove("recording");
+        recognition.continuous = true;
+        recognition.interimResults = true;
+      };
+      recognition.start();
+    }
+  });
+</script>
+</body>
+</html>
