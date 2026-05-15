@@ -513,27 +513,33 @@
     .chat-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .chat-section-title { font-size: 0.88rem; font-weight: 600; color: #1A1512; }
 
+    .prompt-section-card {
+      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 16px;
+      padding: 16px; box-shadow: 0 2px 8px rgba(100,80,50,0.07); margin-bottom: 24px;
+    }
     .prompt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .prompt-card {
-      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 14px;
-      padding: 14px 12px; display: flex; flex-direction: column; gap: 8px;
+      background: white; border: 1px solid #F0E8DE; border-radius: 12px;
+      padding: 12px 14px; display: flex; flex-direction: row; align-items: center; gap: 10px;
       cursor: pointer; text-align: left; font-family: 'Inter', sans-serif;
-      font-size: 0.85rem; color: #1A1512; line-height: 1.4;
-      box-shadow: 0 2px 8px rgba(100,80,50,0.07); transition: transform 0.15s, box-shadow 0.15s;
+      font-size: 0.82rem; color: #1A1512; line-height: 1.4; transition: background 0.15s;
     }
-    .prompt-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(100,80,50,0.12); }
+    .prompt-card:hover { background: #F5F0EA; }
     .prompt-card-icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center; font-size: 1rem;
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
     }
 
-    .recent-chat-item {
-      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 14px;
-      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
-      margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(100,80,50,0.07);
-      transition: box-shadow 0.15s;
+    .recent-section-card {
+      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(100,80,50,0.07); overflow: hidden; margin-bottom: 24px;
     }
-    .recent-chat-item:hover { box-shadow: 0 4px 16px rgba(100,80,50,0.12); }
+    .recent-section-header { padding: 14px 16px 10px; }
+    .recent-chat-item {
+      padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+      cursor: pointer; border-top: 1px solid #F0E8DE; transition: background 0.15s;
+    }
+    .recent-chat-item:hover { background: #F5F0EA; }
     .recent-chat-icon {
       width: 36px; height: 36px; border-radius: 10px; background: #F0F4EC;
       display: flex; align-items: center; justify-content: center;
@@ -596,29 +602,28 @@
       background: #FDFAF6; border-top: 1px solid #E8DDD2;
       padding: 10px 16px 14px; flex-shrink: 0;
     }
-    .chat-input-main { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px; }
     .chat-input-area textarea {
-      flex: 1; padding: 10px 14px; border: 1px solid #E8DDD2; border-radius: 12px;
+      width: 100%; padding: 10px 14px; border: 1px solid #E8DDD2; border-radius: 12px;
       font-size: 0.95rem; font-family: inherit; resize: none; height: 44px;
       line-height: 1.5; outline: none; background: white; transition: border-color 0.15s;
+      display: block; margin-bottom: 8px;
     }
     .chat-input-area textarea:focus { border-color: #647D58; }
-    .icon-btn {
-      width: 44px; height: 44px; border-radius: 12px; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .icon-btn.primary { background: #647D58; }
-    .icon-btn svg { width: 20px; height: 20px; }
-    .icon-btn.primary svg { fill: white; }
-    .chat-input-sub { display: flex; gap: 8px; }
+    .chat-input-sub { display: flex; gap: 8px; align-items: center; }
     .chat-attach-btn {
-      padding: 6px 14px; border: 1px solid #E8DDD2; border-radius: 9999px;
+      padding: 7px 14px; border: 1px solid #E8DDD2; border-radius: 9999px;
       background: white; font-size: 0.78rem; color: #78716c;
       cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
     .chat-attach-btn:hover { border-color: #647D58; color: #647D58; }
     .chat-attach-btn.active { background: #647D58; color: white; border-color: #647D58; }
+    .chat-send-btn {
+      margin-left: auto; width: 36px; height: 36px; border-radius: 50%;
+      background: #647D58; border: none; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .chat-send-btn svg { fill: white; width: 16px; height: 16px; }
 
     /* ---- 履歴画面 ---- */
     .history-tabs {
@@ -1189,46 +1194,49 @@
 
   <!-- HUBビュー -->
   <div id="chatHub" class="chat-hub">
-    <div class="chat-section">
-      <div class="chat-section-header">
+
+    <!-- よく使うプロンプト -->
+    <div class="prompt-section-card">
+      <div class="chat-section-header" style="margin-bottom:10px">
         <span class="chat-section-title">よく使うプロンプト</span>
       </div>
       <div class="prompt-grid">
         <button class="prompt-card" data-prompt="会議・授業の要点をまとめてください">
           <div class="prompt-card-icon" style="background:#E4F2E8">📋</div>
-          <span>要点を<br>まとめてほしい</span>
+          <span>要点をまとめてほしい</span>
         </button>
         <button class="prompt-card" data-prompt="TODOやアクションアイテムを一覧にしてください">
           <div class="prompt-card-icon" style="background:#FEF0D8">✅</div>
-          <span>TODOを<br>一覧にしてほしい</span>
+          <span>TODOを一覧にしてほしい</span>
         </button>
         <button class="prompt-card" data-prompt="気になる点や問題点を教えてください">
           <div class="prompt-card-icon" style="background:#EEEFFE">❓</div>
-          <span>問題点・懸念点<br>を教えて</span>
+          <span>この会話の問題点は？</span>
         </button>
         <button class="prompt-card" data-prompt="次のアクションや改善策を提案してください">
-          <div class="prompt-card-icon" style="background:#E8F4FD">▶️</div>
-          <span>次のアクションを<br>提案して</span>
+          <div class="prompt-card-icon" style="background:#E8F4FD">▶</div>
+          <span>次のアクションを提案して</span>
         </button>
       </div>
     </div>
 
+    <!-- 最近のチャット -->
+    <div class="recent-section-card">
+      <div class="recent-section-header">
+        <span class="chat-section-title">最近のチャット</span>
+      </div>
+      <div id="recentChatsList"></div>
+    </div>
+
+    <!-- 新しいチャット -->
     <div class="new-chat-card" id="newChatCard">
       <div>
         <div class="new-chat-title">新しいチャットを始める</div>
-        <div class="new-chat-sub">キーワードや断片的な文章を入力するだけで、伝わる文章を提案します。</div>
+        <div class="new-chat-sub">何でも質問してください。<br>会話の整理やアイデア出しをサポートします。</div>
       </div>
       <div class="new-chat-illust">💬</div>
     </div>
 
-    <div class="chat-section">
-      <div class="chat-section-header">
-        <span class="chat-section-title">最近のチャット</span>
-      </div>
-      <div id="recentChatsList">
-        <p style="color:#a8a29e;font-size:0.88rem;padding:4px 0">まだ履歴がありません</p>
-      </div>
-    </div>
   </div>
 
   <!-- 会話ビュー -->
@@ -1242,16 +1250,15 @@
 
   <!-- 入力バー -->
   <div class="chat-input-area">
-    <div class="chat-input-main">
-      <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"></textarea>
-      <button class="icon-btn primary" id="chatSendBtn">
-        <svg viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
+    <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"></textarea>
     <div class="chat-input-sub">
+      <button class="chat-attach-btn">+ ファイル</button>
       <button class="chat-attach-btn" id="chatFromRecBtn">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4z"/></svg>
         録音データから
+      </button>
+      <button class="chat-send-btn" id="chatSendBtn">
+        <svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
       </button>
     </div>
   </div>
@@ -1305,9 +1312,9 @@
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
     <span>ホーム</span>
   </button>
-  <button class="nav-item" data-screen="history">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-    <span>履歴</span>
+  <button class="nav-item" data-screen="chat">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+    <span>チャット</span>
   </button>
   <button class="nav-rec-fab" id="navRecBtn">
     <div class="fab-btn">
@@ -1316,9 +1323,9 @@
     </div>
     <span id="fabLabel">録音</span>
   </button>
-  <button class="nav-item" data-screen="chat">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
-    <span>チャット</span>
+  <button class="nav-item" data-screen="history">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+    <span>履歴</span>
   </button>
   <button class="nav-item" data-screen="profile">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -2016,7 +2023,7 @@
   function renderRecentChats() {
     const list = document.getElementById("recentChatsList");
     if (!chatSessions.length) {
-      list.innerHTML = '<p style="color:#a8a29e;font-size:0.88rem;padding:4px 0">まだ履歴がありません</p>';
+      list.innerHTML = '<p style="color:#a8a29e;font-size:0.88rem;padding:4px 16px 14px">まだ履歴がありません</p>';
       return;
     }
     list.innerHTML = "";
