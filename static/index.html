@@ -136,12 +136,8 @@
     /* ---- 録音・要約画面 ---- */
 
     /* 状態ごとの表示切り替え */
-    .rec-idle .show-on-recording,
-    .rec-idle .show-on-paused { display: none !important; }
-    .rec-recording .show-on-idle,
-    .rec-recording .show-on-paused { display: none !important; }
-    .rec-paused .show-on-idle,
-    .rec-paused .show-on-recording { display: none !important; }
+    .rec-idle .show-on-recording { display: none !important; }
+    .rec-recording .show-on-idle { display: none !important; }
     .rec-idle .show-on-active { display: none !important; }
 
     /* コンテンツがボトムバーに隠れないよう余白 */
@@ -1145,27 +1141,6 @@
       </div>
     </div>
 
-    <!-- 録音コントロールバー（録音中・一時停止中） -->
-    <div class="rec-bottom-bar">
-      <div class="rec-controls show-on-recording">
-        <button class="rec-ctrl-btn pause" id="pauseBtn">
-          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-          一時停止
-        </button>
-        <button class="rec-ctrl-btn finish" id="finishBtn" aria-label="録音を完了">
-          <span class="stop-square"></span>
-        </button>
-      </div>
-      <div class="rec-controls show-on-paused">
-        <button class="rec-ctrl-btn resume" id="resumeBtn">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          再開
-        </button>
-        <button class="rec-ctrl-btn finish" id="finishBtn2" aria-label="録音を完了">
-          <span class="stop-square"></span>
-        </button>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -1245,9 +1220,10 @@
   </button>
   <button class="nav-rec-fab" id="navRecBtn">
     <div class="fab-btn">
-      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v7a2 2 0 0 1-4 0V5a2 2 0 0 1 2-2zm-6.25 9a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12 18.25a5.5 5.5 0 0 0 5.5-5.5.75.75 0 0 1 1.5 0A7 7 0 0 1 12.75 19.7V22h1.75a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5H11.25V19.7A7 7 0 0 1 5 12.75.75.75 0 0 1 5.75 12z"/></svg>
+      <svg id="fabMicIcon" viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v7a2 2 0 0 1-4 0V5a2 2 0 0 1 2-2zm-6.25 9a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12 18.25a5.5 5.5 0 0 0 5.5-5.5.75.75 0 0 1 1.5 0A7 7 0 0 1 12.75 19.7V22h1.75a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5H11.25V19.7A7 7 0 0 1 5 12.75.75.75 0 0 1 5.75 12z"/></svg>
+      <svg id="fabStopIcon" viewBox="0 0 24 24" fill="white" style="display:none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
     </div>
-    <span>録音</span>
+    <span id="fabLabel">録音</span>
   </button>
   <button class="nav-item" data-screen="chat">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
@@ -1841,6 +1817,12 @@
       if (isRecording) setTimeout(() => recognition.start(), 1000);
     };
 
+    function setFabState(recording) {
+      document.getElementById("fabMicIcon").style.display = recording ? "none" : "";
+      document.getElementById("fabStopIcon").style.display = recording ? "" : "none";
+      document.getElementById("fabLabel").textContent = recording ? "停止" : "録音";
+    }
+
     // NAV FAB → 録音開始/停止
     document.getElementById("navRecBtn").addEventListener("click", async () => {
       if (!recognition) return;
@@ -1866,34 +1848,12 @@
         requestAnimationFrame(startVisualizer);
         recognition.start();
         document.getElementById("navRecBtn").classList.add("recording");
+        setFabState(true);
       } else {
-        // 録音中 or 一時停止中 → 停止
         finishRecording();
       }
     });
 
-
-    // recording → paused
-    document.getElementById("pauseBtn").addEventListener("click", () => {
-      isRecording = false;
-      recognition.stop();
-      stopTimer();
-      stopVisualizer();
-      setRecState("paused");
-      drawPausedDots();
-    });
-
-    // paused → recording
-    document.getElementById("resumeBtn").addEventListener("click", () => {
-      isRecording = true;
-      lastProcessedIndex = 0;
-      setRecState("recording");
-      startTimer();
-      startVisualizer();
-      recognition.start();
-    });
-
-    // finish from any active state
     function finishRecording() {
       isRecording = false;
       recognition.stop();
@@ -1907,9 +1867,8 @@
       }
       setRecState("idle");
       document.getElementById("navRecBtn").classList.remove("recording");
+      setFabState(false);
     }
-    document.getElementById("finishBtn").addEventListener("click", finishRecording);
-    document.getElementById("finishBtn2").addEventListener("click", finishRecording);
 
   } else {
     const navRec = document.getElementById("navRecBtn");
