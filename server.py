@@ -265,6 +265,10 @@ class AskRequest(BaseModel):
     scene: str = "default"
 
 
+class ExtractTodosRequest(BaseModel):
+    summaries: list[str]
+
+
 sessions: dict[str, list] = {}
 
 
@@ -345,6 +349,24 @@ def ask(req: AskRequest, user=Depends(get_current_user)):
         prompt += f"\n\n{scene_note}"
     reply = call_llm(prompt, [{"role": "user", "content": req.question}])
     return {"reply": reply}
+
+
+@app.post("/extract_todos")
+def extract_todos(req: ExtractTodosRequest, user=Depends(get_current_user)):
+    combined = "\n\n---\n\n".join(req.summaries)
+    prompt = """以下は複数の会議・授業の要約テキストです。
+全テキストから「TODO」「アクションアイテム」「宿題」「次回までに」「要確認」「担当」に該当する具体的な行動項目を抽出してください。
+
+出力形式（必ずこの形式で）：
+- [ ] タスク内容
+
+ルール：
+- 重複は除く
+- 曖昧な表現も含める（「〜を検討する」など）
+- 必ず日本語
+- 何も見つからない場合は「- [ ] （TODOなし）」と出力"""
+    reply = call_llm(prompt, [{"role": "user", "content": combined}])
+    return {"todos": reply}
 
 
 @app.post("/reset")

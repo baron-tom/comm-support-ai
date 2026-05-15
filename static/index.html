@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>コミュニケーション支援AI</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#647D58">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@400;500;600&display=swap');
 
@@ -596,6 +600,43 @@
     .typing-indicator { color: #a8a29e; font-size: 0.9rem; padding: 4px 0 8px; }
 
     /* ---- 履歴画面 ---- */
+    .history-tabs {
+      display: flex; border-bottom: 1px solid #E8DDD2;
+      background: #FDFAF6; padding: 0 20px;
+    }
+    .history-tab {
+      padding: 12px 16px; font-size: 0.88rem; font-weight: 500;
+      color: #a8a29e; border: none; background: none; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      font-family: 'Inter', sans-serif; transition: color 0.15s;
+    }
+    .history-tab.active { color: #647D58; border-bottom-color: #647D58; }
+
+    .todo-panel { padding: 16px 20px; display: none; }
+    .todo-panel.active { display: block; }
+    .todo-extract-btn {
+      width: 100%; padding: 12px; border: 1.5px dashed #E8DDD2;
+      border-radius: 12px; background: none; font-size: 0.9rem;
+      color: #647D58; cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.15s; margin-bottom: 16px;
+    }
+    .todo-extract-btn:hover { border-color: #647D58; background: #f0f4ec; }
+    .todo-extract-btn:disabled { opacity: 0.4; cursor: default; }
+    .todo-list-body {
+      font-size: 0.95rem; line-height: 2; color: #292524; white-space: pre-wrap;
+    }
+    .todo-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid #F0E8DE;
+    }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-check {
+      width: 18px; height: 18px; border: 1.5px solid #E8DDD2; border-radius: 4px;
+      flex-shrink: 0; cursor: pointer; margin-top: 3px; appearance: none;
+      background: white; transition: all 0.15s;
+    }
+    .todo-check:checked { background: #647D58; border-color: #647D58; }
+    .todo-text { flex: 1; font-size: 0.92rem; color: #1A1512; }
     .history-list { padding: 16px 20px; }
     .history-date {
       font-size: 0.78rem;
@@ -1155,8 +1196,18 @@
   <div class="screen-header">
     <h1>履歴</h1>
   </div>
-  <div class="history-list" id="historyList">
-    <div class="history-empty">まだ履歴がありません。<br>録音・要約すると、ここに保存されます。</div>
+  <div class="history-tabs">
+    <button class="history-tab active" data-panel="history-panel">履歴</button>
+    <button class="history-tab" data-panel="todo-panel">TODOリスト</button>
+  </div>
+  <div id="history-panel">
+    <div class="history-list" id="historyList">
+      <div class="history-empty">まだ履歴がありません。<br>録音・要約すると、ここに保存されます。</div>
+    </div>
+  </div>
+  <div class="todo-panel" id="todo-panel">
+    <button id="extractTodosBtn" class="todo-extract-btn">✦ 履歴からTODOを抽出する</button>
+    <div id="todoListBody"></div>
   </div>
 </div>
 
@@ -1924,6 +1975,11 @@
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); }
   });
 
+  // PWA Service Worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+
   // 起動時に認証チェック
   initAuth();
 
@@ -1933,6 +1989,75 @@
       e.returnValue = "";
     }
   });
+
+  // ---- 履歴タブ切り替え ----
+  document.querySelectorAll(".history-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".history-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const target = tab.dataset.panel;
+      document.getElementById("history-panel").style.display = target === "history-panel" ? "" : "none";
+      const todoPanel = document.getElementById("todo-panel");
+      todoPanel.style.display = target === "todo-panel" ? "block" : "none";
+    });
+  });
+
+  // ---- TODO抽出 ----
+  document.getElementById("extractTodosBtn").addEventListener("click", async () => {
+    const summaries = historyLog.filter(i => i.type === "summary").map(i => i.content);
+    if (summaries.length === 0) {
+      document.getElementById("todoListBody").innerHTML = '<p style="color:#a8a29e;font-size:0.9rem;text-align:center;padding:20px">要約履歴がありません。録音・要約してから試してください。</p>';
+      return;
+    }
+    const btn = document.getElementById("extractTodosBtn");
+    btn.disabled = true;
+    btn.textContent = "抽出中...";
+    document.getElementById("todoListBody").innerHTML = '<p style="color:#a8a29e;font-size:0.9rem;padding:8px 0">AIが分析しています...</p>';
+    try {
+      const res = await fetch("/extract_todos", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ summaries }),
+      });
+      const data = await res.json();
+      renderTodoList(data.todos);
+    } catch {
+      document.getElementById("todoListBody").innerHTML = '<p style="color:#E74C3C;font-size:0.9rem">エラーが発生しました。</p>';
+    }
+    btn.disabled = false;
+    btn.textContent = "✦ 履歴からTODOを抽出する";
+  });
+
+  function renderTodoList(text) {
+    const body = document.getElementById("todoListBody");
+    const lines = text.split("\n").filter(l => l.trim().startsWith("- [ ]") || l.trim().startsWith("- [x]"));
+    if (lines.length === 0) {
+      body.innerHTML = '<p style="color:#a8a29e;font-size:0.9rem;text-align:center;padding:20px">TODOは見つかりませんでした。</p>';
+      return;
+    }
+    body.innerHTML = "";
+    lines.forEach(line => {
+      const done = line.includes("- [x]");
+      const taskText = line.replace(/^- \[[ x]\] ?/, "").trim();
+      const item = document.createElement("div");
+      item.className = "todo-item";
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.className = "todo-check";
+      chk.checked = done;
+      chk.addEventListener("change", () => {
+        txt.style.textDecoration = chk.checked ? "line-through" : "";
+        txt.style.color = chk.checked ? "#a8a29e" : "";
+      });
+      const txt = document.createElement("span");
+      txt.className = "todo-text";
+      txt.textContent = taskText;
+      if (done) { txt.style.textDecoration = "line-through"; txt.style.color = "#a8a29e"; }
+      item.appendChild(chk);
+      item.appendChild(txt);
+      body.appendChild(item);
+    });
+  }
 
   // チャット用マイク
   let chatRecording = false;

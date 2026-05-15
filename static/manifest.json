@@ -1,0 +1,10 @@
+{
+  "name": "コミュニケーション支援AI",
+  "short_name": "会話支援AI",
+  "description": "リアルタイム文字起こし・要約・発言支援",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F0EA",
+  "theme_color": "#647D58",
+  "orientation": "portrait"
+}
