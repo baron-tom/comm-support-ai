@@ -503,9 +503,29 @@
     }
 
     /* ---- 発言支援画面 ---- */
+    #screen-chat { display: none; flex-direction: column; height: calc(100vh - 72px); }
+    #screen-chat.active { display: flex; }
+    .chat-hint-bar {
+      padding: 8px 20px;
+      background: #FDFAF6;
+      border-bottom: 1px solid #E8DDD2;
+      font-size: 0.78rem;
+      color: #78716c;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chat-scene-badge {
+      background: #647D58;
+      color: white;
+      border-radius: 9999px;
+      padding: 1px 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
     .chat-messages {
+      flex: 1;
       padding: 16px 20px;
-      height: calc(100vh - 210px);
       overflow-y: auto;
     }
     .chat-msg { margin-bottom: 16px; line-height: 1.7; }
@@ -538,27 +558,27 @@
       flex-wrap: wrap;
     }
     .choice-chip {
-      padding: 6px 18px;
-      border: 1.5px solid #292524;
+      padding: 7px 20px;
+      border: 1.5px solid #647D58;
       border-radius: 9999px;
       background: white;
-      color: #292524;
-      font-size: 0.9rem;
+      color: #647D58;
+      font-size: 0.88rem;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
       font-family: 'Inter', sans-serif;
     }
-    .choice-chip:hover { background: #292524; color: white; }
+    .choice-chip:hover { background: #647D58; color: white; }
 
     .chat-input-area {
-      position: sticky;
-      bottom: 0;
-      background: #F5F0EA;
-      padding: 12px 20px;
+      background: #FDFAF6;
+      padding: 12px 20px 16px;
       display: flex;
       gap: 8px;
       align-items: flex-end;
       border-top: 1px solid #E8DDD2;
+      flex-shrink: 0;
     }
     .chat-input-area textarea {
       flex: 1;
@@ -1158,18 +1178,24 @@
   <div class="screen-header">
     <h1>発言支援</h1>
   </div>
+  <div class="chat-hint-bar">
+    <span class="chat-scene-badge" id="chatSceneLabel">授業</span>
+    <span>キーワードを入力 → 文章を提案</span>
+  </div>
   <div class="chat-messages" id="chatMessages">
     <div class="chat-msg ai">
-      <span class="bubble">言いたいことをキーワードや文章で入力してください。</span>
+      <span class="bubble">言いたいことを断片的なキーワードや文章で入力してください。
+
+例：「質問 授業 わからない」
+→ 相手に伝わる自然な文章を提案します。
+
+番号を選ぶとそのまま送信できます。</span>
     </div>
   </div>
   <div class="chat-input-area">
-    <button class="icon-btn secondary" id="chatMicBtn">
-      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm0 2a2 2 0 0 1 2 2v7a2 2 0 0 1-4 0V5a2 2 0 0 1 2-2zm-6.25 9a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12 18.25a5.5 5.5 0 0 0 5.5-5.5.75.75 0 0 1 1.5 0A7 7 0 0 1 12.75 19.7V22h1.75a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1 0-1.5H11.25V19.7A7 7 0 0 1 5 12.75.75.75 0 0 1 5.75 12z"/></svg>
-    </button>
-    <textarea id="chatInput" placeholder="キーワードや文章を入力..."></textarea>
+    <textarea id="chatInput" placeholder="キーワードや文章を入力..." rows="1"></textarea>
     <button class="icon-btn primary" id="chatSendBtn">
-      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </div>
 </div>
@@ -1445,11 +1471,13 @@
   });
 
   // ---- 場面選択 ----
+  const sceneLabels = { class: "授業", work: "会議", daily: "日常", medical: "医療", default: "通常" };
   document.querySelectorAll(".scene-chip").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".scene-chip").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       currentScene = btn.dataset.scene;
+      document.getElementById("chatSceneLabel").textContent = sceneLabels[currentScene] || currentScene;
     });
   });
 
@@ -2035,33 +2063,6 @@
     });
   }
 
-  // チャット用マイク
-  let chatRecording = false;
-  document.getElementById("chatMicBtn").addEventListener("click", () => {
-    const btn = document.getElementById("chatMicBtn");
-    if (!recognition) return;
-    if (chatRecording) {
-      chatRecording = false;
-      recognition.stop();
-      btn.classList.remove("recording");
-    } else {
-      chatRecording = true;
-      btn.classList.add("recording");
-      const savedContinuous = recognition.continuous;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.onresult = e => {
-        document.getElementById("chatInput").value = e.results[0][0].transcript;
-      };
-      recognition.onend = () => {
-        chatRecording = false;
-        btn.classList.remove("recording");
-        recognition.continuous = true;
-        recognition.interimResults = true;
-      };
-      recognition.start();
-    }
-  });
 </script>
 </body>
 </html>
