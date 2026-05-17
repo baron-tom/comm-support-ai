@@ -4,39 +4,77 @@
 
 LLM切り替え:
   環境変数 LLM_BACKEND=gemini (デフォルト) or ollama
-  Gemini使用時: 環境変数 GEMINI_API_KEY を設定
 
-認証:
-  SUPABASE_JWT_SECRET が未設定の場合は認証スキップ（ローカル開発用）
+必須環境変数:
+  GEMINI_API_KEY
+  SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET, SUPABASE_SERVICE_ROLE_KEY
+  GROQ_API_KEY (PRO/PREMIUM 文字起こし用)
+
+省略時は認証スキップ・Groq 無効でローカル開発可能。
 """
 
-from fastapi import FastAPI, Depends, Header, HTTPException
+from fastapi import FastAPI, Depends, Header, HTTPException, UploadFile, File, Form, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from jose import jwt, JWTError
 import requests
+import stripe
 import os
+from datetime import datetime, date, timedelta
 
 app = FastAPI()
 
-# ---- LLM設定 ----
+# ---- LLM 設定 ----
 LLM_BACKEND = os.environ.get("LLM_BACKEND", "gemini")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.0-flash-lite"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL_FREE = "gemini-2.0-flash-lite"
+GEMINI_MODEL_PRO  = "gemini-2.0-flash"
+GEMINI_BASE_URL   = "https://generativelanguage.googleapis.com/v1beta/models"
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL   = "http://localhost:11434/api/chat"
 OLLAMA_MODEL = "qwen2.5:7b"
 
-# ---- Supabase認証設定 ----
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+GROQ_API_KEY     = os.environ.get("GROQ_API_KEY", "")
+GROQ_WHISPER_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 
+# ---- Supabase 設定 ----
+SUPABASE_URL              = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY         = os.environ.get("SUPABASE_ANON_KEY", "")
+SUPABASE_JWT_SECRET       = os.environ.get("SUPABASE_JWT_SECRET", "")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+# ---- Stripe 設定 ----
+STRIPE_SECRET_KEY     = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+APP_URL               = os.environ.get("APP_URL", "http://localhost:8000")
+
+STRIPE_PRICES = {
+    "pro_monthly":     os.environ.get("STRIPE_PRICE_PRO_MONTHLY", ""),
+    "pro_yearly":      os.environ.get("STRIPE_PRICE_PRO_YEARLY", ""),
+    "pro_student":     os.environ.get("STRIPE_PRICE_PRO_STUDENT", ""),
+    "premium_monthly": os.environ.get("STRIPE_PRICE_PREMIUM_MONTHLY", ""),
+    "premium_yearly":  os.environ.get("STRIPE_PRICE_PREMIUM_YEARLY", ""),
+    "premium_student": os.environ.get("STRIPE_PRICE_PREMIUM_STUDENT", ""),
+}
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+
+# ---- プラン制限 ----
+PLAN_LIMITS = {
+    "free":    {"transcription_seconds": 3_600,   "chat_daily": 5,    "history_days": 7},
+    "pro":     {"transcription_seconds": 72_000,  "chat_daily": None, "history_days": None},
+    "premium": {"transcription_seconds": 180_000, "chat_daily": None, "history_days": None},
+}
+
+
+# ================================================================
+# 認証
+# ================================================================
 
 def get_current_user(authorization: str = Header(default=None)):
-    """JWT認証。SUPABASE_JWT_SECRET未設定時はdev modeでスキップ。"""
+    """JWT 認証。SUPABASE_JWT_SECRET 未設定時は dev mode でスキップ。"""
     if not SUPABASE_JWT_SECRET:
         return {"sub": "dev"}
     if not authorization or not authorization.startswith("Bearer "):
@@ -54,17 +92,126 @@ def get_current_user(authorization: str = Header(default=None)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def call_llm(system_prompt: str, messages: list[dict]) -> str:
-    """
-    messages: [{"role": "user"/"assistant", "content": str}, ...]
-    """
+# ================================================================
+# Supabase REST ヘルパー
+# ================================================================
+
+def _sb_headers() -> dict:
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+
+def _sb_available() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+
+def get_user_plan(user_id: str) -> str:
+    if user_id == "dev" or not _sb_available():
+        return "free"
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/profiles",
+            headers=_sb_headers(),
+            params={"id": f"eq.{user_id}", "select": "plan"},
+            timeout=5,
+        )
+        data = resp.json()
+        if data:
+            return data[0].get("plan", "free")
+    except Exception:
+        pass
+    return "free"
+
+
+def get_monthly_usage(user_id: str, year_month: str) -> int:
+    if user_id == "dev" or not _sb_available():
+        return 0
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/usage_monthly",
+            headers=_sb_headers(),
+            params={
+                "user_id": f"eq.{user_id}",
+                "year_month": f"eq.{year_month}",
+                "select": "transcription_seconds",
+            },
+            timeout=5,
+        )
+        data = resp.json()
+        if data:
+            return data[0].get("transcription_seconds", 0)
+    except Exception:
+        pass
+    return 0
+
+
+def increment_transcription_usage(user_id: str, year_month: str, seconds: int):
+    if user_id == "dev" or not _sb_available():
+        return
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/increment_transcription_usage",
+            headers=_sb_headers(),
+            json={"p_user_id": user_id, "p_year_month": year_month, "p_seconds": seconds},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+def get_daily_chat_count(user_id: str, today: str) -> int:
+    if user_id == "dev" or not _sb_available():
+        return 0
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/usage_daily_chat",
+            headers=_sb_headers(),
+            params={"user_id": f"eq.{user_id}", "date": f"eq.{today}", "select": "chat_count"},
+            timeout=5,
+        )
+        data = resp.json()
+        if data:
+            return data[0].get("chat_count", 0)
+    except Exception:
+        pass
+    return 0
+
+
+def increment_chat_count(user_id: str, today: str):
+    if user_id == "dev" or not _sb_available():
+        return
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/increment_chat_count",
+            headers=_sb_headers(),
+            json={"p_user_id": user_id, "p_date": today},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+# ================================================================
+# LLM 呼び出し
+# ================================================================
+
+def call_llm(system_prompt: str, messages: list[dict], plan: str = "free") -> str:
     if LLM_BACKEND == "gemini":
-        contents = []
-        for msg in messages:
-            role = "user" if msg["role"] == "user" else "model"
-            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        model = GEMINI_MODEL_PRO if plan in ("pro", "premium") else GEMINI_MODEL_FREE
+        url = f"{GEMINI_BASE_URL}/{model}:generateContent?key={GEMINI_API_KEY}"
+        contents = [
+            {
+                "role": "user" if m["role"] == "user" else "model",
+                "parts": [{"text": m["content"]}],
+            }
+            for m in messages
+        ]
         resp = requests.post(
-            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            url,
             json={
                 "system_instruction": {"parts": [{"text": system_prompt}]},
                 "contents": contents,
@@ -87,7 +234,21 @@ def call_llm(system_prompt: str, messages: list[dict]) -> str:
         return resp.json()["message"]["content"]
 
 
-# ---- プロンプト定義 ----
+def call_groq_whisper(audio_bytes: bytes, filename: str) -> str:
+    resp = requests.post(
+        GROQ_WHISPER_URL,
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        files={"file": (filename, audio_bytes, "audio/webm")},
+        data={"model": "whisper-large-v3", "language": "ja", "response_format": "text"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.text.strip()
+
+
+# ================================================================
+# プロンプト定義
+# ================================================================
 
 CORRECT_PROMPT = """あなたは音声認識の誤認識補正AIです。
 以下は音声認識の生テキストです。文脈・トピックから誤認識を推測して修正し、補正後のテキストのみを出力してください。
@@ -170,10 +331,10 @@ BASE_SYSTEM_PROMPT = """あなたは会話・発言が苦手な人の「通訳AI
 
 SCENE_PROMPTS = {
     "default": "",
-    "work": "場面は職場です。上司・同僚・取引先への言葉として適切な表現を使ってください。",
+    "work":    "場面は職場です。上司・同僚・取引先への言葉として適切な表現を使ってください。",
     "medical": "場面は医療機関です。医師・看護師に症状や状況を正確に伝える表現を使ってください。",
-    "daily": "場面は日常・家族・友人との会話です。自然でやわらかい表現を使ってください。",
-    "class": "場面は学校の授業です。",
+    "daily":   "場面は日常・家族・友人との会話です。自然でやわらかい表現を使ってください。",
+    "class":   "場面は学校の授業です。",
 }
 
 SUMMARIZE_LEVELS = {
@@ -235,11 +396,62 @@ SUMMARIZE_LEVELS = {
 ルール：
 - 全体15〜20行程度
 - 重要な発言は引用してもよい
-- 必ず日本語"""
+- 必ず日本語""",
 }
 
 
-# ---- リクエストモデル ----
+# ================================================================
+# セッション管理
+# ================================================================
+
+_mem_sessions: dict[str, list] = {}
+
+
+def _load_session(user_id: str, session_id: str) -> list:
+    if user_id == "dev" or not _sb_available():
+        return list(_mem_sessions.get(session_id, []))
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/chat_sessions",
+            headers=_sb_headers(),
+            params={
+                "user_id": f"eq.{user_id}",
+                "session_id": f"eq.{session_id}",
+                "select": "messages",
+            },
+            timeout=5,
+        )
+        data = resp.json()
+        if data:
+            return list(data[0].get("messages", []))
+    except Exception:
+        pass
+    return list(_mem_sessions.get(session_id, []))
+
+
+def _save_session(user_id: str, session_id: str, messages: list):
+    _mem_sessions[session_id] = messages
+    if user_id == "dev" or not _sb_available():
+        return
+    try:
+        requests.post(
+            f"{SUPABASE_URL}/rest/v1/chat_sessions",
+            headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates"},
+            json={
+                "user_id": user_id,
+                "session_id": session_id,
+                "messages": messages,
+                "updated_at": datetime.utcnow().isoformat() + "Z",
+            },
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+# ================================================================
+# リクエストモデル
+# ================================================================
 
 class ChatRequest(BaseModel):
     session_id: str
@@ -269,14 +481,21 @@ class ExtractTodosRequest(BaseModel):
     summaries: list[str]
 
 
-sessions: dict[str, list] = {}
+class SaveSummaryRequest(BaseModel):
+    topic: str = ""
+    scene: str = "default"
+    transcript: str = ""
+    summary: str = ""
+    duration_seconds: int = 0
 
 
-# ---- エンドポイント ----
+# ================================================================
+# エンドポイント
+# ================================================================
 
 @app.get("/config")
 def get_config():
-    """フロントエンド用の公開設定を返す（認証不要）"""
+    """フロントエンド用の公開設定（認証不要）"""
     return {
         "supabase_url": SUPABASE_URL,
         "supabase_anon_key": SUPABASE_ANON_KEY,
@@ -284,8 +503,67 @@ def get_config():
     }
 
 
+@app.get("/me")
+def get_me(user=Depends(get_current_user)):
+    """ログイン中ユーザーのプランと使用量"""
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
+    year_month = datetime.utcnow().strftime("%Y-%m")
+    monthly_seconds = get_monthly_usage(user_id, year_month)
+    today = date.today().isoformat()
+    daily_chat = get_daily_chat_count(user_id, today)
+    lim = PLAN_LIMITS[plan]
+    return {
+        "plan": plan,
+        "usage": {
+            "transcription_seconds": monthly_seconds,
+            "transcription_limit": lim["transcription_seconds"],
+            "chat_today": daily_chat,
+            "chat_daily_limit": lim["chat_daily"],
+        },
+    }
+
+
+@app.post("/transcribe")
+async def transcribe(
+    file: UploadFile = File(...),
+    duration_seconds: int = Form(default=0),
+    user=Depends(get_current_user),
+):
+    """Groq Whisper による高精度文字起こし（PRO/PREMIUM のみ）"""
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
+
+    if plan == "free":
+        raise HTTPException(
+            status_code=403,
+            detail="Groq Whisper の利用には PRO 以上のプランが必要です",
+        )
+
+    year_month = datetime.utcnow().strftime("%Y-%m")
+    lim = PLAN_LIMITS[plan]["transcription_seconds"]
+    current = get_monthly_usage(user_id, year_month)
+    if current + duration_seconds > lim:
+        remaining = max(0, lim - current)
+        raise HTTPException(
+            status_code=429,
+            detail=f"月間利用上限に達しました。残り {remaining // 60} 分です。",
+        )
+
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Groq API キーが設定されていません")
+
+    audio_bytes = await file.read()
+    text = call_groq_whisper(audio_bytes, file.filename or "audio.webm")
+    increment_transcription_usage(user_id, year_month, duration_seconds)
+    return {"text": text}
+
+
 @app.post("/summarize")
 def summarize(req: SummarizeRequest, user=Depends(get_current_user)):
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
+
     if req.mode == "correct":
         prompt = CORRECT_PROMPT
         if req.topic:
@@ -302,37 +580,54 @@ def summarize(req: SummarizeRequest, user=Depends(get_current_user)):
             prompt += f"\n\n{scene_note}"
 
     if req.topic and req.mode not in ("correct", "bullet_to_text"):
-        prompt += f"\n\n【重要】この内容は「{req.topic}」に関するものです。文字起こしに誤認識があっても、このトピックをもとに正しく解釈・補完してください。"
+        prompt += (
+            f"\n\n【重要】この内容は「{req.topic}」に関するものです。"
+            "文字起こしに誤認識があっても、このトピックをもとに正しく解釈・補完してください。"
+        )
 
-    reply = call_llm(prompt, [{"role": "user", "content": req.text}])
+    reply = call_llm(prompt, [{"role": "user", "content": req.text}], plan=plan)
     return {"summary": reply}
 
 
 @app.post("/chat")
 def chat(req: ChatRequest, user=Depends(get_current_user)):
-    # 認証済みの場合はユーザーIDをセッションキーに使う
-    session_key = user.get("sub", req.session_id)
-    if session_key == "dev":
-        session_key = req.session_id
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
 
-    if session_key not in sessions:
-        sessions[session_key] = []
+    if plan == "free":
+        today = date.today().isoformat()
+        count = get_daily_chat_count(user_id, today)
+        daily_lim = PLAN_LIMITS["free"]["chat_daily"]
+        if count >= daily_lim:
+            raise HTTPException(
+                status_code=429,
+                detail=f"本日の AI チャット上限（{daily_lim}回）に達しました。PRO プランにアップグレードすると無制限になります。",
+            )
 
-    history = sessions[session_key]
+    session_key = user_id if user_id != "dev" else req.session_id
+    history = _load_session(user_id, session_key)
     history.append({"role": "user", "content": req.message})
 
-    scene_note = SCENE_PROMPTS.get(req.scene, "")
     system_prompt = BASE_SYSTEM_PROMPT
+    scene_note = SCENE_PROMPTS.get(req.scene, "")
     if scene_note:
         system_prompt += f"\n\n{scene_note}"
 
-    reply = call_llm(system_prompt, history)
+    reply = call_llm(system_prompt, history, plan=plan)
     history.append({"role": "assistant", "content": reply})
+    _save_session(user_id, session_key, history)
+
+    if plan == "free" and user_id != "dev":
+        increment_chat_count(user_id, date.today().isoformat())
+
     return {"reply": reply}
 
 
 @app.post("/ask")
 def ask(req: AskRequest, user=Depends(get_current_user)):
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
+
     prompt = f"""あなたは会議の議事録アシスタントです。
 以下の会議の文字起こしをもとに、質問に答えてください。
 
@@ -347,12 +642,16 @@ def ask(req: AskRequest, user=Depends(get_current_user)):
     scene_note = SCENE_PROMPTS.get(req.scene, "")
     if scene_note:
         prompt += f"\n\n{scene_note}"
-    reply = call_llm(prompt, [{"role": "user", "content": req.question}])
+
+    reply = call_llm(prompt, [{"role": "user", "content": req.question}], plan=plan)
     return {"reply": reply}
 
 
 @app.post("/extract_todos")
 def extract_todos(req: ExtractTodosRequest, user=Depends(get_current_user)):
+    user_id = user.get("sub", "dev")
+    plan = get_user_plan(user_id)
+
     combined = "\n\n---\n\n".join(req.summaries)
     prompt = """以下は複数の会議・授業の要約テキストです。
 全テキストから「TODO」「アクションアイテム」「宿題」「次回までに」「要確認」「担当」に該当する具体的な行動項目を抽出してください。
@@ -365,17 +664,230 @@ def extract_todos(req: ExtractTodosRequest, user=Depends(get_current_user)):
 - 曖昧な表現も含める（「〜を検討する」など）
 - 必ず日本語
 - 何も見つからない場合は「- [ ] （TODOなし）」と出力"""
-    reply = call_llm(prompt, [{"role": "user", "content": combined}])
+
+    reply = call_llm(prompt, [{"role": "user", "content": combined}], plan=plan)
     return {"todos": reply}
+
+
+@app.post("/summaries")
+def save_summary(req: SaveSummaryRequest, user=Depends(get_current_user)):
+    """要約を DB に永続保存（ログインユーザーのみ）"""
+    user_id = user.get("sub", "dev")
+    if user_id == "dev" or not _sb_available():
+        return {"id": "local"}
+    try:
+        resp = requests.post(
+            f"{SUPABASE_URL}/rest/v1/summaries",
+            headers=_sb_headers(),
+            json={
+                "user_id": user_id,
+                "topic": req.topic,
+                "scene": req.scene,
+                "transcript": req.transcript,
+                "summary": req.summary,
+                "duration_seconds": req.duration_seconds,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return {"id": resp.json()[0]["id"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/summaries")
+def list_summaries(user=Depends(get_current_user)):
+    """要約履歴一覧（プランに応じた期間フィルタ付き）"""
+    user_id = user.get("sub", "dev")
+    if user_id == "dev" or not _sb_available():
+        return []
+    plan = get_user_plan(user_id)
+    params: dict = {
+        "user_id": f"eq.{user_id}",
+        "select": "id,topic,scene,summary,duration_seconds,created_at",
+        "order": "created_at.desc",
+        "limit": "200",
+    }
+    if plan == "free":
+        cutoff = (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
+        params["created_at"] = f"gte.{cutoff}"
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/summaries",
+            headers=_sb_headers(),
+            params=params,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return []
 
 
 @app.post("/reset")
 def reset(req: ResetRequest, user=Depends(get_current_user)):
-    session_key = user.get("sub", req.session_id)
-    if session_key == "dev":
-        session_key = req.session_id
-    sessions.pop(session_key, None)
+    user_id = user.get("sub", "dev")
+    session_key = user_id if user_id != "dev" else req.session_id
+    _mem_sessions.pop(session_key, None)
     return {"status": "ok"}
+
+
+# ================================================================
+# Stripe ヘルパー
+# ================================================================
+
+def _price_to_plan(price_id: str) -> str | None:
+    for key, pid in STRIPE_PRICES.items():
+        if pid and pid == price_id:
+            return "pro" if key.startswith("pro") else "premium"
+    return None
+
+
+def get_stripe_customer_id(user_id: str) -> str | None:
+    if user_id == "dev" or not _sb_available():
+        return None
+    try:
+        resp = requests.get(
+            f"{SUPABASE_URL}/rest/v1/profiles",
+            headers=_sb_headers(),
+            params={"id": f"eq.{user_id}", "select": "stripe_customer_id"},
+            timeout=5,
+        )
+        data = resp.json()
+        if data:
+            return data[0].get("stripe_customer_id")
+    except Exception:
+        pass
+    return None
+
+
+def save_stripe_customer_id(user_id: str, customer_id: str):
+    if user_id == "dev" or not _sb_available():
+        return
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/profiles",
+            headers=_sb_headers(),
+            params={"id": f"eq.{user_id}"},
+            json={"stripe_customer_id": customer_id, "updated_at": datetime.utcnow().isoformat() + "Z"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+def update_user_plan(user_id: str, plan: str):
+    if user_id == "dev" or not _sb_available():
+        return
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/profiles",
+            headers=_sb_headers(),
+            params={"id": f"eq.{user_id}"},
+            json={"plan": plan, "updated_at": datetime.utcnow().isoformat() + "Z"},
+            timeout=5,
+        )
+    except Exception:
+        pass
+
+
+# ================================================================
+# 請求エンドポイント
+# ================================================================
+
+class CheckoutRequest(BaseModel):
+    plan: str      # "pro" | "premium"
+    interval: str  # "monthly" | "yearly" | "student"
+
+
+@app.post("/billing/checkout")
+def create_checkout(req: CheckoutRequest, user=Depends(get_current_user)):
+    """Stripe Checkout セッションを作成してURLを返す"""
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Stripe が設定されていません")
+
+    user_id = user.get("sub", "dev")
+    email   = user.get("email", "")
+
+    if req.interval == "student" and not email.endswith(".ac.jp"):
+        raise HTTPException(status_code=400, detail="学生割引は .ac.jp メールアドレスが必要です")
+
+    price_key = f"{req.plan}_{req.interval}"
+    price_id  = STRIPE_PRICES.get(price_key)
+    if not price_id:
+        raise HTTPException(status_code=400, detail="無効なプラン選択です")
+
+    customer_id = get_stripe_customer_id(user_id)
+    if not customer_id:
+        customer    = stripe.Customer.create(email=email, metadata={"user_id": user_id})
+        customer_id = customer.id
+        save_stripe_customer_id(user_id, customer_id)
+
+    session = stripe.checkout.Session.create(
+        customer=customer_id,
+        mode="subscription",
+        line_items=[{"price": price_id, "quantity": 1}],
+        success_url=f"{APP_URL}/?payment=success",
+        cancel_url=f"{APP_URL}/?payment=cancel",
+        metadata={"user_id": user_id},
+        subscription_data={"metadata": {"user_id": user_id}},
+    )
+    return {"url": session.url}
+
+
+@app.post("/billing/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe Webhook 受信（サブスク完了・更新・解約）"""
+    payload = await request.body()
+    sig     = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except (ValueError, stripe.error.SignatureVerificationError):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    etype = event["type"]
+    obj   = event["data"]["object"]
+
+    if etype == "checkout.session.completed":
+        user_id = obj.get("metadata", {}).get("user_id")
+        sub_id  = obj.get("subscription")
+        if user_id and sub_id:
+            sub      = stripe.Subscription.retrieve(sub_id)
+            price_id = sub["items"]["data"][0]["price"]["id"]
+            plan     = _price_to_plan(price_id)
+            if plan:
+                update_user_plan(user_id, plan)
+
+    elif etype in ("customer.subscription.updated", "customer.subscription.deleted"):
+        user_id = obj.get("metadata", {}).get("user_id")
+        if user_id:
+            if etype == "customer.subscription.deleted":
+                update_user_plan(user_id, "free")
+            else:
+                price_id = obj["items"]["data"][0]["price"]["id"]
+                plan     = _price_to_plan(price_id)
+                if plan:
+                    update_user_plan(user_id, plan)
+
+    return {"status": "ok"}
+
+
+@app.get("/billing/portal")
+def billing_portal(user=Depends(get_current_user)):
+    """Stripe カスタマーポータル URL を返す（サブスク管理・解約）"""
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Stripe が設定されていません")
+
+    user_id     = user.get("sub", "dev")
+    customer_id = get_stripe_customer_id(user_id)
+    if not customer_id:
+        raise HTTPException(status_code=404, detail="サブスクリプションが見つかりません")
+
+    session = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=f"{APP_URL}/",
+    )
+    return {"url": session.url}
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

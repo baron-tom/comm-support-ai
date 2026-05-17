@@ -5,12 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>コミュニケーション支援AI</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <meta name="theme-color" content="#647D58">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@400;500;600&display=swap');
 
+    :root { --font-scale: 1; }
+    html { font-size: calc(16px * var(--font-scale)); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -530,26 +534,34 @@
       display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
     }
 
+    .chat-section-more { font-size: 0.8rem; color: #a8a29e; cursor: pointer; }
+
     .recent-section-card {
       background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 16px;
       box-shadow: 0 2px 8px rgba(100,80,50,0.07); overflow: hidden; margin-bottom: 24px;
     }
     .recent-section-header { padding: 14px 16px 10px; }
     .recent-chat-item {
-      padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; display: flex; align-items: flex-start; gap: 12px;
       cursor: pointer; border-top: 1px solid #F0E8DE; transition: background 0.15s;
     }
     .recent-chat-item:hover { background: #F5F0EA; }
     .recent-chat-icon {
-      width: 36px; height: 36px; border-radius: 10px; background: #F0F4EC;
+      width: 40px; height: 40px; border-radius: 50%; background: #F0F4EC;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; font-size: 1.1rem;
+      flex-shrink: 0;
     }
     .recent-chat-body { flex: 1; min-width: 0; }
     .recent-chat-title { font-size: 0.92rem; font-weight: 600; color: #1A1512; margin-bottom: 3px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .recent-chat-preview { font-size: 0.8rem; color: #78716c; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .recent-chat-meta { font-size: 0.72rem; color: #a8a29e; flex-shrink: 0; }
+    .recent-chat-preview {
+      font-size: 0.8rem; color: #78716c; line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .recent-chat-meta {
+      font-size: 0.72rem; color: #a8a29e; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-top: 2px;
+    }
 
     .new-chat-card {
       background: #F0F4EC; border: 1px solid #D4E4CC; border-radius: 16px;
@@ -624,6 +636,66 @@
       display: flex; align-items: center; justify-content: center;
     }
     .chat-send-btn svg { fill: white; width: 16px; height: 16px; }
+
+    /* ---- 履歴詳細オーバーレイ ---- */
+    #historyDetail {
+      position: fixed; inset: 0; background: #F5F0EA;
+      z-index: 500; display: flex; flex-direction: column;
+      max-width: 480px; left: 50%; transform: translateX(-50%);
+    }
+    #historyDetail.hd-hidden { display: none; }
+
+    /* ---- 法的ページオーバーレイ ---- */
+    .legal-overlay {
+      position: fixed; inset: 0; background: #F5F0EA;
+      z-index: 600; display: flex; flex-direction: column;
+      max-width: 480px; left: 50%; transform: translateX(-50%);
+    }
+    .legal-overlay.leg-hidden { display: none; }
+    .legal-scroll { flex: 1; overflow-y: auto; padding: 24px 24px 60px; }
+    .legal-title {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.6rem; font-weight: 400; color: #0c0a09;
+      margin-bottom: 6px;
+    }
+    .legal-date { font-size: 0.78rem; color: #a8a29e; margin-bottom: 28px; }
+    .legal-section { margin-bottom: 24px; }
+    .legal-section h3 {
+      font-size: 0.9rem; font-weight: 700; color: #0c0a09;
+      margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #E8DDD2;
+    }
+    .legal-section p, .legal-section li {
+      font-size: 0.88rem; color: #44403c; line-height: 1.9;
+    }
+    .legal-section ul { padding-left: 1.2em; }
+    .legal-section li { margin-bottom: 4px; }
+    .hd-scroll { flex: 1; overflow-y: auto; padding: 20px 20px 60px; }
+    .hd-scene-badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 600;
+      color: #647D58; background: #E8F0E4; border: 1px solid #C8DCC0;
+      border-radius: 9999px; padding: 2px 10px; margin-bottom: 10px;
+    }
+    .hd-title {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.7rem; font-weight: 400; color: #0c0a09;
+      margin-bottom: 10px; line-height: 1.25;
+    }
+    .hd-meta {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-size: 0.8rem; color: #78716c; margin-bottom: 20px;
+    }
+    .hd-meta svg { color: #a8a29e; flex-shrink: 0; }
+    .hd-content {
+      font-size: 0.92rem; color: #292524; line-height: 1.85;
+      white-space: pre-wrap; background: #FDFAF6;
+      border: 1px solid #E8DDD2; border-radius: 16px; padding: 18px;
+      margin-bottom: 20px;
+    }
+    .hd-ask-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      background: #647D58; color: white; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+    }
 
     /* ---- 履歴画面 ---- */
     .history-tabs {
@@ -704,71 +776,174 @@
     }
 
     /* ---- 設定画面 ---- */
-    .profile-section { padding: 20px; }
+    .profile-section { padding: 20px 20px 40px; }
+    .profile-user-card {
+      display: flex; align-items: center; gap: 14px;
+      background: #FDFAF6; border: 1px solid #E8DDD2; border-radius: 18px;
+      padding: 18px 20px; margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(100,80,50,0.06);
+    }
+    .profile-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg,#647D58,#4a5e40);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; font-weight: 600; color: white; flex-shrink: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    .profile-user-name { font-size: 1rem; font-weight: 600; color: #0c0a09; margin-bottom: 3px; }
+    .profile-user-email { font-size: 0.8rem; color: #a8a29e; }
     .plan-card {
       background: linear-gradient(135deg, #1c1917, #0c0a09);
-      border-radius: 20px;
-      padding: 22px;
-      color: white;
-      margin-bottom: 20px;
-      position: relative;
-      overflow: hidden;
+      border-radius: 18px; padding: 20px 22px; color: white;
+      margin-bottom: 14px; position: relative; overflow: hidden;
     }
     .plan-card::before {
-      content: '';
-      position: absolute;
-      top: -30px;
-      right: -30px;
-      width: 180px;
-      height: 180px;
+      content: ''; position: absolute; top: -30px; right: -30px;
+      width: 180px; height: 180px;
       background: radial-gradient(circle, rgba(196,230,218,0.25) 0%, transparent 70%);
       pointer-events: none;
     }
+    .plan-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
     .plan-card .plan-label {
-      font-size: 0.72rem;
-      opacity: 0.55;
-      margin-bottom: 4px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      font-family: 'Inter', sans-serif;
+      font-size: 0.68rem; opacity: 0.5; margin-bottom: 2px;
+      letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Inter', sans-serif;
     }
     .plan-card .plan-name {
       font-family: 'EB Garamond', Georgia, serif;
-      font-size: 1.9rem;
-      font-weight: 300;
-      margin-bottom: 12px;
+      font-size: 2rem; font-weight: 300; line-height: 1;
     }
-    .plan-card .plan-usage { font-size: 0.88rem; opacity: 0.65; margin-bottom: 14px; }
+    .plan-usage-bar-wrap { margin-bottom: 14px; }
+    .plan-usage-label { font-size: 0.78rem; opacity: 0.6; margin-bottom: 6px; }
+    .plan-usage-bar { height: 4px; background: rgba(255,255,255,0.2); border-radius: 9999px; overflow: hidden; }
+    .plan-usage-fill { height: 100%; background: #8FBF7A; border-radius: 9999px; width: 0%; transition: width 0.6s; }
     .plan-upgrade-btn {
-      padding: 9px 22px;
-      background: white;
-      color: #0c0a09;
-      border: none;
-      border-radius: 9999px;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-family: 'Inter', sans-serif;
+      padding: 9px 22px; background: white; color: #0c0a09;
+      border: none; border-radius: 9999px; font-weight: 600;
+      cursor: pointer; font-size: 0.88rem; font-family: 'Inter', sans-serif;
+    }
+    .settings-group { margin-bottom: 14px; }
+    .settings-group-label {
+      font-size: 0.72rem; font-weight: 600; color: #a8a29e;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0 4px; margin-bottom: 6px;
     }
     .menu-list {
-      background: #FDFAF6;
-      border-radius: 16px;
-      border: 1px solid #E8DDD2;
-      overflow: hidden;
+      background: #FDFAF6; border-radius: 16px;
+      border: 1px solid #E8DDD2; overflow: hidden;
     }
     .menu-item {
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center; gap: 12px;
       justify-content: space-between;
-      padding: 17px 20px;
-      border-bottom: 1px solid #F5F0EA;
-      cursor: pointer;
-      font-size: 1rem;
-      color: #0c0a09;
+      padding: 15px 18px; border-bottom: 1px solid #F5F0EA;
+      cursor: pointer; font-size: 0.95rem; color: #0c0a09;
     }
     .menu-item:last-child { border-bottom: none; }
     .menu-item.danger { color: #E74C3C; }
-    .menu-arrow { color: #d6d3d1; font-size: 1.1rem; }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .menu-arrow { color: #d6d3d1; font-size: 1rem; }
+
+    /* ---- フォントサイズモーダル ---- */
+    /* ---- アップグレードモーダル ---- */
+    .upgrade-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      z-index: 2000; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .upgrade-modal-backdrop.hidden { display: none; }
+    .upgrade-modal {
+      background: #FDFAF6; border-radius: 24px 24px 0 0;
+      padding: 28px 24px 48px; width: 100%; max-width: 480px;
+    }
+    .upgrade-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+    .upgrade-modal-sub { font-size: 0.85rem; color: #78716c; margin-bottom: 20px; }
+    .upgrade-interval-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .interval-btn {
+      flex: 1; padding: 8px; border-radius: 9999px; border: 1.5px solid #E8DDD2;
+      background: none; font-size: 0.82rem; cursor: pointer; font-family: 'Inter', sans-serif;
+    }
+    .interval-btn.active { background: #0c0a09; color: white; border-color: #0c0a09; }
+    .upgrade-plan-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+    .upgrade-plan-card {
+      border: 1.5px solid #E8DDD2; border-radius: 16px; padding: 16px 18px;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .upgrade-plan-card.selected { border-color: #647D58; background: #f0f4ec; }
+    .upgrade-plan-card-top { display: flex; justify-content: space-between; align-items: center; }
+    .upgrade-plan-name { font-weight: 700; font-size: 1rem; }
+    .upgrade-plan-price { font-size: 1rem; font-weight: 700; color: #647D58; }
+    .upgrade-plan-price small { font-size: 0.72rem; font-weight: 400; color: #78716c; }
+    .upgrade-plan-features { font-size: 0.8rem; color: #78716c; margin-top: 6px; }
+    .upgrade-submit-btn {
+      width: 100%; padding: 14px; background: #0c0a09; color: white;
+      border: none; border-radius: 9999px; font-weight: 700; font-size: 0.95rem;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+    }
+    .upgrade-submit-btn:disabled { opacity: 0.4; cursor: default; }
+    .upgrade-student-note { font-size: 0.75rem; color: #a8a29e; text-align: center; margin-top: 10px; }
+
+    .font-modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+      z-index: 2000; display: flex; align-items: flex-end; justify-content: center;
+    }
+    .font-modal-backdrop.fm-hidden { display: none; }
+    .font-modal {
+      background: #FDFAF6; border-radius: 24px 24px 0 0;
+      padding: 24px 24px 40px; width: 100%; max-width: 480px;
+    }
+    .font-modal-title { font-size: 0.88rem; font-weight: 600; color: #a8a29e; margin-bottom: 16px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .font-options { display: flex; gap: 10px; }
+    .font-option {
+      flex: 1; padding: 16px 8px; border: 2px solid #E8DDD2; border-radius: 14px;
+      background: white; cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; gap: 6px; transition: all 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .font-option.selected { border-color: #647D58; background: #F0F4EC; }
+    .font-option-preview { color: #0c0a09; font-weight: 500; line-height: 1; }
+    .font-option-label { font-size: 0.72rem; color: #a8a29e; }
+
+    /* ---- オンボーディング ---- */
+    #onboardOverlay {
+      position: fixed; inset: 0; background: #EDE7DF;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 1500; padding: 40px 24px;
+    }
+    #onboardOverlay.hidden { display: none; }
+    .onboard-card {
+      background: #FDFAF6; border-radius: 24px; border: 1px solid #E8DDD2;
+      padding: 36px 28px; width: 100%; max-width: 380px;
+      box-shadow: 0 8px 32px rgba(100,80,50,0.1);
+    }
+    .onboard-heading {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 1.6rem; font-weight: 400; color: #0c0a09;
+      margin-bottom: 6px; line-height: 1.25;
+    }
+    .onboard-sub { font-size: 0.85rem; color: #78716c; margin-bottom: 28px; line-height: 1.6; }
+    .onboard-choices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .onboard-choice {
+      border: 2px solid #E8DDD2; border-radius: 16px; padding: 16px 20px;
+      background: white; cursor: pointer; display: flex; align-items: center; gap: 16px;
+      text-align: left; font-family: 'Inter', sans-serif; transition: all 0.15s; width: 100%;
+    }
+    .onboard-choice:hover { border-color: #647D58; background: #F0F4EC; }
+    .onboard-choice.selected { border-color: #647D58; background: #F0F4EC; }
+    .onboard-choice-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.4rem;
+    }
+    .onboard-choice-label { font-size: 1rem; font-weight: 600; color: #1A1512; }
+    .onboard-choice-desc { font-size: 0.78rem; color: #78716c; margin-top: 2px; }
+    .onboard-start-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      background: #647D58; color: white; font-size: 1rem; font-weight: 600;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      opacity: 0.4; pointer-events: none; transition: all 0.2s;
+    }
+    .onboard-start-btn.ready { opacity: 1; pointer-events: auto; }
 
     /* ---- 認証オーバーレイ ---- */
     #authOverlay {
@@ -886,8 +1061,8 @@
     #homeScroll { padding-bottom: 180px; }
     .rec-recording #homeScroll, .rec-paused #homeScroll { padding-bottom: 24px; }
 
-    .meeting-header { padding: 16px 20px 14px; border-bottom: 1px solid #E8DDD2; background: #FDFAF6; }
-    .scene-chips { display: flex; gap: 6px; margin-bottom: 8px; }
+    .meeting-header { padding: 18px 20px 16px; }
+    .scene-chips { display: flex; gap: 6px; margin-bottom: 10px; }
     .scene-chip {
       font-size: 0.72rem; font-weight: 600; color: #78716c;
       background: #F5F0EA; border: 1px solid #E8DDD2;
@@ -896,21 +1071,21 @@
       transition: all 0.15s;
     }
     .scene-chip.active { background: #647D58; border-color: #647D58; color: white; }
-    .meeting-title-row { display: flex; align-items: center; gap: 8px; }
+    .meeting-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .meeting-title-input {
       flex: 1; border: none;
       font-family: 'EB Garamond', Georgia, serif;
-      font-size: 1.5rem; font-weight: 400; color: #0c0a09;
-      background: transparent; outline: none; padding: 0;
+      font-size: 1.7rem; font-weight: 400; color: #0c0a09;
+      background: transparent; outline: none; padding: 0; line-height: 1.25;
     }
     .meeting-title-input::placeholder { color: #d6d3d1; }
-    .meeting-edit-btn { border: none; background: none; cursor: pointer; color: #a8a29e; padding: 4px; }
+    .meeting-edit-btn { border: none; background: none; cursor: pointer; color: #a8a29e; padding: 4px; flex-shrink: 0; }
     .meeting-meta {
-      display: flex; align-items: center; gap: 8px;
-      margin-top: 6px; font-size: 0.82rem; color: #78716c;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.8rem; color: #78716c;
     }
     .meeting-meta-item { display: flex; align-items: center; gap: 4px; }
-    .meeting-meta-sep { color: #d6d3d1; }
+    .meeting-meta-sep { color: #d6d3d1; font-size: 0.9rem; }
 
     .audio-player-card {
       margin: 12px 20px;
@@ -1063,12 +1238,92 @@
   </div>
 </div>
 
+<!-- フォントサイズモーダル -->
+<!-- アップグレードモーダル -->
+<div id="upgradeModal" class="upgrade-modal-backdrop hidden">
+  <div class="upgrade-modal">
+    <div class="upgrade-modal-title">プランを選択</div>
+    <div class="upgrade-modal-sub">いつでもキャンセル可能です</div>
+    <div class="upgrade-interval-row">
+      <button class="interval-btn active" data-interval="monthly">月払い</button>
+      <button class="interval-btn" data-interval="yearly">年払い</button>
+      <button class="interval-btn" data-interval="student" id="studentIntervalBtn" style="display:none">学生（年払い）</button>
+    </div>
+    <div class="upgrade-plan-cards">
+      <div class="upgrade-plan-card selected" data-plan="pro">
+        <div class="upgrade-plan-card-top">
+          <div class="upgrade-plan-name">PRO</div>
+          <div class="upgrade-plan-price" id="proPriceLabel">¥1,480<small>/月</small></div>
+        </div>
+        <div class="upgrade-plan-features">月20時間 文字起こし・AI要約 Gemini Flash・AIチャット無制限</div>
+      </div>
+      <div class="upgrade-plan-card" data-plan="premium">
+        <div class="upgrade-plan-card-top">
+          <div class="upgrade-plan-name">PREMIUM</div>
+          <div class="upgrade-plan-price" id="premiumPriceLabel">¥2,480<small>/月</small></div>
+        </div>
+        <div class="upgrade-plan-features">月50時間 文字起こし・全機能利用可能</div>
+      </div>
+    </div>
+    <button class="upgrade-submit-btn" id="upgradeSubmitBtn">今すぐ始める</button>
+    <div class="upgrade-student-note" id="studentNote" style="display:none">学生割引は .ac.jp メールアドレスのみ適用されます</div>
+  </div>
+</div>
+
+<div id="fontModal" class="font-modal-backdrop fm-hidden">
+  <div class="font-modal">
+    <div class="font-modal-title">文字サイズ</div>
+    <div class="font-options">
+      <button class="font-option" data-scale="0.88">
+        <span class="font-option-preview" style="font-size:1.1rem">あ</span>
+        <span class="font-option-label">小</span>
+      </button>
+      <button class="font-option selected" data-scale="1">
+        <span class="font-option-preview" style="font-size:1.4rem">あ</span>
+        <span class="font-option-label">標準</span>
+      </button>
+      <button class="font-option" data-scale="1.14">
+        <span class="font-option-preview" style="font-size:1.7rem">あ</span>
+        <span class="font-option-label">大</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- オンボーディング -->
+<div id="onboardOverlay" class="hidden">
+  <div class="onboard-card">
+    <div class="onboard-heading">どんな場面で<br>使いますか？</div>
+    <p class="onboard-sub">AIの要約スタイルを最適化します。<br>あとから変更できます。</p>
+    <div class="onboard-choices">
+      <button class="onboard-choice" data-type="company">
+        <div class="onboard-choice-icon" style="background:#E8EEF4">🏢</div>
+        <div>
+          <div class="onboard-choice-label">会社</div>
+          <div class="onboard-choice-desc">会議・業務の要約に最適化</div>
+        </div>
+      </button>
+      <button class="onboard-choice" data-type="school">
+        <div class="onboard-choice-icon" style="background:#E4F2E8">🎓</div>
+        <div>
+          <div class="onboard-choice-label">学校</div>
+          <div class="onboard-choice-desc">授業ノート形式で整理</div>
+        </div>
+      </button>
+      <button class="onboard-choice" data-type="other">
+        <div class="onboard-choice-icon" style="background:#F5F0EA">✦</div>
+        <div>
+          <div class="onboard-choice-label">その他</div>
+          <div class="onboard-choice-desc">汎用的な要約スタイル</div>
+        </div>
+      </button>
+    </div>
+    <button id="onboardStartBtn" class="onboard-start-btn">始める</button>
+  </div>
+</div>
+
 <!-- ホーム -->
 <div class="screen active" id="screen-record">
-  <div class="screen-header">
-    <h1>ホーム</h1>
-    <span class="plan-badge" id="planBadge">FREE</span>
-  </div>
 
   <div id="recContainer" class="rec-idle">
 
@@ -1076,25 +1331,28 @@
 
       <!-- 会議ヘッダー -->
       <div class="meeting-header">
-        <div class="scene-chips">
-          <button class="scene-chip active" data-scene="class">授業</button>
-          <button class="scene-chip" data-scene="work">会議</button>
-          <button class="scene-chip" data-scene="daily">日常</button>
-          <button class="scene-chip" data-scene="medical">医療</button>
-        </div>
+        <span id="sceneTypeBadge" style="display:inline-block;font-size:0.7rem;font-weight:600;color:#647D58;background:#E8F0E4;border:1px solid #C8DCC0;border-radius:9999px;padding:2px 10px;margin-bottom:8px"></span>
         <div class="meeting-title-row">
           <input type="text" id="topicInput" class="meeting-title-input" placeholder="タイトルを入力">
           <button class="meeting-edit-btn" aria-label="編集">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
         </div>
-        <div class="meeting-meta show-on-active">
+        <div class="meeting-meta">
           <span class="meeting-meta-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="color:#a8a29e"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+            <span id="recDate"></span>
+          </span>
+          <span class="meeting-meta-sep show-on-active">·</span>
+          <span class="meeting-meta-item show-on-active">
             <span class="rec-dot" id="recDot"></span>
             <span id="recStatusText">録音中</span>
           </span>
-          <span class="meeting-meta-sep">·</span>
-          <span class="meeting-meta-item" id="recTimer">00:00</span>
+          <span class="meeting-meta-sep show-on-active">·</span>
+          <span class="meeting-meta-item show-on-active">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="color:#a8a29e"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+            <span id="recTimer">00:00</span>
+          </span>
         </div>
       </div>
 
@@ -1185,28 +1443,23 @@
 
 <!-- チャット -->
 <div class="screen" id="screen-chat">
-  <div class="screen-header">
-    <div>
-      <h1>チャット</h1>
-      <p class="screen-subtitle">AIと会話して情報を整理しましょう</p>
-    </div>
-  </div>
 
   <!-- HUBビュー -->
   <div id="chatHub" class="chat-hub">
 
     <!-- よく使うプロンプト -->
     <div class="prompt-section-card">
-      <div class="chat-section-header" style="margin-bottom:10px">
+      <div class="chat-section-header" style="margin-bottom:12px">
         <span class="chat-section-title">よく使うプロンプト</span>
+        <span class="chat-section-more">すべて見る ›</span>
       </div>
       <div class="prompt-grid">
         <button class="prompt-card" data-prompt="会議・授業の要点をまとめてください">
           <div class="prompt-card-icon" style="background:#E4F2E8">📋</div>
-          <span>要点をまとめてほしい</span>
+          <span>会議の要点をまとめてほしい</span>
         </button>
         <button class="prompt-card" data-prompt="TODOやアクションアイテムを一覧にしてください">
-          <div class="prompt-card-icon" style="background:#FEF0D8">✅</div>
+          <div class="prompt-card-icon" style="background:#FEF0D8">☑️</div>
           <span>TODOを一覧にしてほしい</span>
         </button>
         <button class="prompt-card" data-prompt="気になる点や問題点を教えてください">
@@ -1214,7 +1467,7 @@
           <span>この会話の問題点は？</span>
         </button>
         <button class="prompt-card" data-prompt="次のアクションや改善策を提案してください">
-          <div class="prompt-card-icon" style="background:#E8F4FD">▶</div>
+          <div class="prompt-card-icon" style="background:#E8F4FD">▶️</div>
           <span>次のアクションを提案して</span>
         </button>
       </div>
@@ -1222,8 +1475,9 @@
 
     <!-- 最近のチャット -->
     <div class="recent-section-card">
-      <div class="recent-section-header">
+      <div class="recent-section-header chat-section-header">
         <span class="chat-section-title">最近のチャット</span>
+        <span class="chat-section-more" id="chatSeeAllBtn">すべて見る ›</span>
       </div>
       <div id="recentChatsList"></div>
     </div>
@@ -1234,9 +1488,32 @@
         <div class="new-chat-title">新しいチャットを始める</div>
         <div class="new-chat-sub">何でも質問してください。<br>会話の整理やアイデア出しをサポートします。</div>
       </div>
-      <div class="new-chat-illust">💬</div>
+      <div class="new-chat-illust">
+        <svg viewBox="0 0 80 60" width="80" height="60">
+          <ellipse cx="38" cy="28" rx="22" ry="18" fill="#647D58" opacity="0.85" rx="10"/>
+          <rect x="16" y="10" width="44" height="34" rx="10" fill="#647D58" opacity="0.9"/>
+          <circle cx="29" cy="27" r="3" fill="white"/>
+          <circle cx="39" cy="27" r="3" fill="white"/>
+          <circle cx="49" cy="27" r="3" fill="white"/>
+          <polygon points="22,44 30,44 26,52" fill="#647D58" opacity="0.9"/>
+          <circle cx="58" cy="42" r="12" fill="#FDFAF6" stroke="#E8DDD2" stroke-width="1.5"/>
+          <circle cx="54" cy="42" r="2" fill="#a8a29e"/>
+          <circle cx="58" cy="42" r="2" fill="#a8a29e"/>
+          <circle cx="62" cy="42" r="2" fill="#a8a29e"/>
+        </svg>
+      </div>
     </div>
 
+  </div>
+
+  <!-- 全チャット一覧ビュー -->
+  <div id="chatAllList" class="chat-conversation" style="display:none">
+    <div class="chat-conv-header">
+      <button class="chat-back-btn" id="chatAllBackBtn">← 戻る</button>
+      <span class="chat-conv-title">チャット履歴</span>
+      <span id="chatAllCount" style="font-size:0.78rem;color:#a8a29e;margin-left:auto"></span>
+    </div>
+    <div id="allChatsList" style="flex:1;overflow-y:auto;padding:0 0 16px"></div>
   </div>
 
   <!-- 会話ビュー -->
@@ -1250,7 +1527,7 @@
 
   <!-- 入力バー -->
   <div class="chat-input-area">
-    <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"></textarea>
+    <textarea id="chatInput" placeholder="メッセージを入力..."></textarea>
     <div class="chat-input-sub">
       <button class="chat-attach-btn">+ ファイル</button>
       <button class="chat-attach-btn" id="chatFromRecBtn">
@@ -1258,7 +1535,7 @@
         録音データから
       </button>
       <button class="chat-send-btn" id="chatSendBtn">
-        <svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+        <svg viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
   </div>
@@ -1266,9 +1543,6 @@
 
 <!-- 履歴 -->
 <div class="screen" id="screen-history">
-  <div class="screen-header">
-    <h1>履歴</h1>
-  </div>
   <div class="history-tabs">
     <button class="history-tab active" data-panel="history-panel">履歴</button>
     <button class="history-tab" data-panel="todo-panel">TODOリスト</button>
@@ -1286,22 +1560,259 @@
 
 <!-- プロフィール -->
 <div class="screen" id="screen-profile">
-  <div class="screen-header">
-    <h1>プロフィール</h1>
-  </div>
   <div class="profile-section">
-    <div class="plan-card">
-      <div class="plan-label">現在のプラン</div>
-      <div class="plan-name">FREE</div>
-      <div class="plan-usage">今月の使用: 0分 / 3時間</div>
-      <button class="plan-upgrade-btn">PRO にアップグレード →</button>
+
+    <!-- ユーザー情報 -->
+    <div class="profile-user-card">
+      <div class="profile-avatar" id="profileAvatar">U</div>
+      <div>
+        <div class="profile-user-name" id="profileName">ゲスト</div>
+        <div class="profile-user-email" id="profileEmail">ログインしていません</div>
+      </div>
     </div>
-    <div class="menu-list">
-      <div class="menu-item"><span>フォントサイズ</span><span class="menu-arrow">›</span></div>
-      <div class="menu-item"><span>通知設定</span><span class="menu-arrow">›</span></div>
-      <div class="menu-item"><span>利用規約</span><span class="menu-arrow">›</span></div>
-      <div class="menu-item"><span>プライバシーポリシー</span><span class="menu-arrow">›</span></div>
-      <div class="menu-item danger" id="logoutBtn"><span>ログアウト</span><span class="menu-arrow">›</span></div>
+
+    <!-- プランカード -->
+    <div class="plan-card">
+      <div class="plan-card-top">
+        <div>
+          <div class="plan-label">現在のプラン</div>
+          <div class="plan-name" id="planBadge">FREE</div>
+        </div>
+        <button class="plan-upgrade-btn">アップグレード →</button>
+      </div>
+      <div class="plan-usage-bar-wrap">
+        <div class="plan-usage-label">今月の使用: <span id="usageText">0分 / 3時間</span></div>
+        <div class="plan-usage-bar"><div class="plan-usage-fill" id="usageFill"></div></div>
+      </div>
+    </div>
+
+    <!-- 設定グループ：個人設定 -->
+    <!-- サブスク管理（PRO/PREMIUM のみ表示） -->
+    <div class="settings-group" id="billingGroup" style="display:none">
+      <div class="settings-group-label">サブスクリプション</div>
+      <div class="menu-list">
+        <div class="menu-item" id="manageSubBtn">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#E8F0E4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#647D58" stroke-width="2" width="16" height="16"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <span>プラン管理・解約</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">個人設定</div>
+      <div class="menu-list">
+        <div class="menu-item" id="changeSceneBtn">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#E8F0E4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#647D58" stroke-width="2" width="16" height="16"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            </div>
+            <span>利用シーン</span>
+          </div>
+          <span style="display:flex;align-items:center;gap:8px">
+            <span id="currentSceneLabel" style="font-size:0.82rem;color:#647D58;font-weight:500"></span>
+            <span class="menu-arrow">›</span>
+          </span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#F0EDFC">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#7C5CBF" stroke-width="2" width="16" height="16"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+            </div>
+            <span>フォントサイズ</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#FEF0D8">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <span>通知設定</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定グループ：サポート -->
+    <div class="settings-group">
+      <div class="settings-group-label">サポート</div>
+      <div class="menu-list">
+        <div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#F5F0EA">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <span>利用規約</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#F5F0EA">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <span>プライバシーポリシー</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#F5F0EA">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <span>お問い合わせ</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ログアウト -->
+    <div class="settings-group">
+      <div class="menu-list">
+        <div class="menu-item danger" id="logoutBtn">
+          <div class="menu-item-left">
+            <div class="menu-icon" style="background:#FEE8E8">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#E74C3C" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </div>
+            <span>ログアウト</span>
+          </div>
+          <span class="menu-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 履歴詳細オーバーレイ -->
+<div id="historyDetail" class="hd-hidden">
+  <div class="chat-conv-header">
+    <button class="chat-back-btn" id="histDetailBack">← 戻る</button>
+    <span style="flex:1"></span>
+    <button style="border:none;background:none;color:#a8a29e;font-size:1.2rem;cursor:pointer;padding:4px">···</button>
+  </div>
+  <div class="hd-scroll">
+    <span id="hdSceneBadge" class="hd-scene-badge"></span>
+    <h2 id="hdTitle" class="hd-title"></h2>
+    <div id="hdMeta" class="hd-meta"></div>
+    <div class="stat-cards-row" id="hdStatRow"></div>
+    <div id="hdContent" class="hd-content"></div>
+    <button id="hdAskBtn" class="hd-ask-btn">チャットでこの内容について質問する</button>
+  </div>
+</div>
+
+<!-- 利用規約オーバーレイ -->
+<div id="tosOverlay" class="legal-overlay leg-hidden">
+  <div class="chat-conv-header">
+    <button class="chat-back-btn" id="tosBack">← 戻る</button>
+  </div>
+  <div class="legal-scroll">
+    <h2 class="legal-title">利用規約</h2>
+    <div class="legal-date">最終更新：2026年5月16日</div>
+
+    <div class="legal-section">
+      <h3>第1条（適用）</h3>
+      <p>本規約は、コミュニケーション支援AI（以下「本サービス」）の利用に関する条件を定めるものです。ユーザーは本規約に同意した上で本サービスを利用するものとします。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第2条（サービスの内容）</h3>
+      <p>本サービスは、音声の文字起こし・要約・AI会話支援を提供するWebアプリケーションです。無料プランおよび有料プランを提供します。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第3条（禁止事項）</h3>
+      <p>ユーザーは以下の行為を行ってはなりません。</p>
+      <ul>
+        <li>法令または公序良俗に違反する行為</li>
+        <li>第三者の著作権・個人情報・プライバシーを侵害する行為</li>
+        <li>本サービスの運営を妨害する行為</li>
+        <li>本サービスを商業目的で無断複製・再配布する行為</li>
+        <li>他のユーザーになりすます行為</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h3>第4条（免責事項）</h3>
+      <p>本サービスは現状有姿で提供されます。AI生成コンテンツの正確性・完全性について保証しません。本サービスの利用により生じた損害について、当社は一切の責任を負いません。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第5条（サービスの変更・停止）</h3>
+      <p>当社はユーザーへの事前通知なく、本サービスの内容変更・一時停止・終了を行う場合があります。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第6条（知的財産権）</h3>
+      <p>本サービスに関する著作権その他一切の知的財産権は、当社または正当な権利者に帰属します。ユーザーが入力・録音した音声・テキストの権利はユーザーに帰属します。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第7条（準拠法・管轄）</h3>
+      <p>本規約は日本法に準拠します。本サービスに関する紛争は、東京地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
+    </div>
+  </div>
+</div>
+
+<!-- プライバシーポリシーオーバーレイ -->
+<div id="ppOverlay" class="legal-overlay leg-hidden">
+  <div class="chat-conv-header">
+    <button class="chat-back-btn" id="ppBack">← 戻る</button>
+  </div>
+  <div class="legal-scroll">
+    <h2 class="legal-title">プライバシーポリシー</h2>
+    <div class="legal-date">最終更新：2026年5月16日</div>
+
+    <div class="legal-section">
+      <h3>1. 収集する情報</h3>
+      <ul>
+        <li><strong>アカウント情報：</strong>メールアドレス（ログイン時）</li>
+        <li><strong>音声・テキストデータ：</strong>録音中の音声から生成された文字起こしテキスト</li>
+        <li><strong>利用ログ：</strong>機能の利用状況、アクセス日時</li>
+        <li><strong>デバイス情報：</strong>ブラウザ種別、OSバージョン</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h3>2. 利用目的</h3>
+      <ul>
+        <li>サービスの提供・改善</li>
+        <li>AI要約・文字起こし機能の処理</li>
+        <li>プラン管理・利用量の計測</li>
+        <li>サポート対応・不正利用の防止</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h3>3. 第三者提供</h3>
+      <p>当社は、以下の場合を除きユーザーの個人情報を第三者に提供しません。</p>
+      <ul>
+        <li>ユーザーの同意がある場合</li>
+        <li>法令に基づく場合</li>
+        <li>AI処理のためGoogle Gemini APIへテキストを送信する場合（音声の原文は送信されません）</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h3>4. データの保存と削除</h3>
+      <p>文字起こし・要約データはブラウザのlocalStorageに保存されます。サーバー側への保存は認証ユーザーのみです。アカウント削除の申請により全データを消去します。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>5. Cookie・ローカルストレージ</h3>
+      <p>本サービスはセッション管理・設定保存のためlocalStorageを使用します。広告目的のトラッキングは行いません。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>6. お問い合わせ</h3>
+      <p>個人情報の取り扱いに関するお問い合わせは、アプリ内のお問い合わせフォームよりご連絡ください。</p>
     </div>
   </div>
 </div>
@@ -1349,10 +1860,31 @@
     document.getElementById("authOverlay").classList.remove("hidden");
   }
 
-  function showApp() {
+  async function showApp(userEmail) {
     document.getElementById("authOverlay").classList.add("hidden");
     loadHistoryFromStorage();
+    try {
+      const meRes = await fetch("/me", { headers: authHeaders() });
+      if (meRes.ok) { const me = await meRes.json(); updatePlanUI(me); }
+    } catch {}
     loadChatSessions();
+    const now = new Date();
+    const days = ["日","月","火","水","木","金","土"];
+    document.getElementById("recDate").textContent =
+      `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")} (${days[now.getDay()]})`;
+    const savedType = localStorage.getItem(USER_TYPE_KEY);
+    if (savedType) {
+      applyUserType(savedType);
+    } else {
+      showOnboarding();
+    }
+    // プロフィール表示
+    if (userEmail) {
+      const initial = userEmail[0].toUpperCase();
+      document.getElementById("profileAvatar").textContent = initial;
+      document.getElementById("profileName").textContent = userEmail.split("@")[0];
+      document.getElementById("profileEmail").textContent = userEmail;
+    }
   }
 
   async function initAuth() {
@@ -1383,7 +1915,7 @@
       if (session) {
         currentToken = session.access_token;
         currentUserId = session.user.id;
-        showApp();
+        showApp(session.user.email);
       } else if (event === "SIGNED_OUT") {
         currentToken = null;
         currentUserId = null;
@@ -1395,7 +1927,7 @@
     if (session) {
       currentToken = session.access_token;
       currentUserId = session.user.id;
-      showApp();
+      showApp(session.user.email);
     } else {
       showAuth();
     }
@@ -1424,6 +1956,111 @@
     if (e.key === "Enter") document.getElementById("authBtn").click();
   });
 
+  // ---- 履歴詳細 ----
+  const sceneToLabel = { work: "会社", class: "学校", default: "その他", daily: "日常", medical: "医療" };
+
+  function openHistoryDetail(item) {
+    const badge = document.getElementById("hdSceneBadge");
+    badge.textContent = sceneToLabel[item.scene] || "その他";
+    badge.style.display = item.scene ? "inline-block" : "none";
+
+    document.getElementById("hdTitle").textContent = item.topic;
+
+    const d = item.time;
+    const wdays = ["日","月","火","水","木","金","土"];
+    const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} (${wdays[d.getDay()]})`;
+    const timeStr = d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    document.getElementById("hdMeta").innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+      <span>${dateStr}</span>
+      <span style="color:#d6d3d1">·</span>
+      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+      <span>${timeStr}</span>`;
+
+    const text = item.content;
+    const decisions = (text.match(/決定|合意|確定|承認/g) || []).length;
+    const todos = (text.match(/TODO|タスク|アクション|対応|担当|実施/g) || []).length;
+    const confirms = (text.match(/要確認|不明|確認|検討|？/g) || []).length;
+    document.getElementById("hdStatRow").innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-decision"><svg viewBox="0 0 24 24" fill="none" stroke="#4A9B5E" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <span class="stat-label">決定事項</span>
+        <span class="stat-num">${decisions}<small>件</small></span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-todo"><svg viewBox="0 0 24 24" fill="none" stroke="#D4850A" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <span class="stat-label">TODO</span>
+        <span class="stat-num">${todos}<small>件</small></span>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-wrap stat-confirm"><svg viewBox="0 0 24 24" fill="none" stroke="#5B5BD6" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <span class="stat-label">要確認事項</span>
+        <span class="stat-num">${confirms}<small>件</small></span>
+      </div>`;
+
+    document.getElementById("hdContent").textContent = item.content;
+    document.getElementById("historyDetail").classList.remove("hd-hidden");
+  }
+
+  document.getElementById("histDetailBack").addEventListener("click", () => {
+    document.getElementById("historyDetail").classList.add("hd-hidden");
+  });
+
+  document.getElementById("hdAskBtn").addEventListener("click", () => {
+    document.getElementById("historyDetail").classList.add("hd-hidden");
+    document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.querySelector('[data-screen="chat"]').classList.add("active");
+    document.getElementById("screen-chat").classList.add("active");
+    showChatHub();
+    const content = document.getElementById("hdContent").textContent;
+    startNewChat(`【履歴の内容】\n${content.slice(0, 600)}\n\nこの内容について質問があります。`);
+  });
+
+  // ---- フォントサイズ ----
+  const FONT_KEY = "comm_font_scale";
+  function applyFontScale(scale) {
+    document.documentElement.style.setProperty("--font-scale", scale);
+    localStorage.setItem(FONT_KEY, scale);
+    document.querySelectorAll(".font-option").forEach(btn => {
+      btn.classList.toggle("selected", parseFloat(btn.dataset.scale) === parseFloat(scale));
+    });
+  }
+  const savedScale = localStorage.getItem(FONT_KEY);
+  if (savedScale) applyFontScale(parseFloat(savedScale));
+
+  document.querySelectorAll(".font-option").forEach(btn => {
+    btn.addEventListener("click", () => {
+      applyFontScale(parseFloat(btn.dataset.scale));
+    });
+  });
+  document.getElementById("fontModal").addEventListener("click", e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.add("fm-hidden");
+  });
+  document.querySelectorAll(".menu-item").forEach(item => {
+    const text = item.querySelector("span")?.textContent || "";
+    if (text.includes("フォントサイズ")) {
+      item.addEventListener("click", () => document.getElementById("fontModal").classList.remove("fm-hidden"));
+    }
+  });
+
+  // ---- 音声プレイヤーカード ----
+  // 録音前はカードを非表示、録音中/後に表示
+  document.querySelector(".audio-player-card").style.display = "none";
+
+  // ---- 法的ページ ----
+  document.querySelectorAll(".menu-item").forEach(item => {
+    const text = item.querySelector("span")?.textContent || "";
+    if (text.includes("利用規約")) {
+      item.addEventListener("click", () => document.getElementById("tosOverlay").classList.remove("leg-hidden"));
+    }
+    if (text.includes("プライバシーポリシー")) {
+      item.addEventListener("click", () => document.getElementById("ppOverlay").classList.remove("leg-hidden"));
+    }
+  });
+  document.getElementById("tosBack").addEventListener("click", () => document.getElementById("tosOverlay").classList.add("leg-hidden"));
+  document.getElementById("ppBack").addEventListener("click", () => document.getElementById("ppOverlay").classList.add("leg-hidden"));
+
   // ログアウト
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     if (supabaseClient) await supabaseClient.auth.signOut();
@@ -1432,13 +2069,16 @@
 
   // ---- アプリ状態 ----
   let sessionId = "session_" + Date.now();
-  let currentScene = "class";
+  let currentScene = "default";
   let recognition = null;
   let isRecording = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
   let finalTranscript = "";
   let lastProcessedIndex = 0;
   let summarizedLength = 0;
   let summaryLevel = 2;
+  let userPlan = "free";
   let historyLog = [];
   let recStartTime = null;
   let transcriptEntries = [];
@@ -1536,13 +2176,106 @@
     });
   });
 
-  // ---- 場面選択 ----
-  document.querySelectorAll(".scene-chip").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".scene-chip").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentScene = btn.dataset.scene;
+  // ---- オンボーディング ----
+  const USER_TYPE_KEY = "comm_user_type";
+  const typeToScene = { company: "work", school: "class", other: "default" };
+  const typeToLabel = { company: "会社", school: "学校", other: "その他" };
+
+  const STAT_CONFIGS = {
+    company: [
+      { label: "決定事項", cls: "stat-decision",
+        svg: `<polyline points="20 6 9 17 4 12"/>`,
+        re: /決定|合意|確定|承認/g },
+      { label: "TODO", cls: "stat-todo",
+        svg: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+        re: /TODO|タスク|アクション|対応|担当|実施/g },
+      { label: "要確認事項", cls: "stat-confirm",
+        svg: `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
+        re: /要確認|不明|確認|検討|？/g },
+    ],
+    school: [
+      { label: "重要ポイント", cls: "stat-decision",
+        svg: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
+        re: /重要|ポイント|必ず|試験|テスト|大切|覚/g },
+      { label: "課題・宿題", cls: "stat-todo",
+        svg: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>`,
+        re: /課題|宿題|提出|レポート|次回|予習/g },
+      { label: "要復習", cls: "stat-confirm",
+        svg: `<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/>`,
+        re: /復習|確認|不明|理解|わからない|？|補足/g },
+    ],
+    other: [
+      { label: "要点", cls: "stat-decision",
+        svg: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
+        re: /重要|ポイント|要点|まとめ|結論/g },
+      { label: "アクション", cls: "stat-todo",
+        svg: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
+        re: /TODO|タスク|アクション|対応|実施|やること/g },
+      { label: "不明点", cls: "stat-confirm",
+        svg: `<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
+        re: /不明|確認|検討|？|わからない|要確認/g },
+    ],
+  };
+  let currentStatConfig = STAT_CONFIGS.company;
+
+  function applyStatCardLayout(type) {
+    const cfg = STAT_CONFIGS[type] || STAT_CONFIGS.other;
+    currentStatConfig = cfg;
+    const ids = ["decisionCount", "todoCount", "confirmCount"];
+    ids.forEach((id, i) => {
+      const numEl = document.getElementById(id);
+      if (!numEl) return;
+      const card = numEl.closest(".stat-card");
+      const wrap = card.querySelector(".stat-icon-wrap");
+      const labelEl = card.querySelector(".stat-label");
+      wrap.className = `stat-icon-wrap ${cfg[i].cls}`;
+      const stroke = cfg[i].cls === "stat-decision" ? "#4A9B5E"
+                   : cfg[i].cls === "stat-todo"     ? "#D4850A" : "#5B5BD6";
+      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" width="14" height="14">${cfg[i].svg}</svg>`;
+      labelEl.textContent = cfg[i].label;
     });
+  }
+
+  function applyUserType(type) {
+    currentScene = typeToScene[type] || "default";
+    localStorage.setItem(USER_TYPE_KEY, type);
+    const label = typeToLabel[type] || "";
+    const lbl = document.getElementById("currentSceneLabel");
+    if (lbl) lbl.textContent = label;
+    const badge = document.getElementById("sceneTypeBadge");
+    if (badge) badge.textContent = label;
+    applyStatCardLayout(type);
+  }
+
+  function showOnboarding() {
+    document.getElementById("onboardOverlay").classList.remove("hidden");
+  }
+
+  function hideOnboarding() {
+    document.getElementById("onboardOverlay").classList.add("hidden");
+  }
+
+  let selectedType = null;
+  document.querySelectorAll(".onboard-choice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".onboard-choice").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selectedType = btn.dataset.type;
+      document.getElementById("onboardStartBtn").classList.add("ready");
+    });
+  });
+
+  document.getElementById("onboardStartBtn").addEventListener("click", () => {
+    if (!selectedType) return;
+    applyUserType(selectedType);
+    hideOnboarding();
+  });
+
+  document.getElementById("changeSceneBtn").addEventListener("click", () => {
+    selectedType = null;
+    document.querySelectorAll(".onboard-choice").forEach(b => b.classList.remove("selected"));
+    document.getElementById("onboardStartBtn").classList.remove("ready");
+    showOnboarding();
   });
 
   // ---- 詳しさ設定（UIにボタンがある場合のみ有効） ----
@@ -1665,7 +2398,7 @@
   }
 
   function saveToHistory(type, content, topic) {
-    historyLog.unshift({ type, content, topic: topic || "無題", time: new Date() });
+    historyLog.unshift({ type, content, topic: topic || "無題", time: new Date(), scene: currentScene });
     persistHistory();
   }
 
@@ -1693,6 +2426,7 @@
         <div class="history-item-title">${item.topic}</div>
         <div class="history-item-preview">${item.content.replace(/\n/g, " ")}</div>
         <div class="history-item-meta">${timeStr} · ${item.type === "summary" ? "要約" : "発言支援"}</div>`;
+      el.addEventListener("click", () => openHistoryDetail(item));
       list.appendChild(el);
     });
   }
@@ -1737,6 +2471,19 @@
       card.querySelector("textarea").value = data.summary;
       card.querySelector(".summary-card-text").style.opacity = "1";
       saveToHistory("summary", data.summary, (topic || "録音") + " 全体まとめ");
+      if (currentUserId) {
+        fetch("/summaries", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            topic: topic || "録音",
+            scene: currentScene,
+            transcript: finalTranscript,
+            summary: data.summary,
+            duration_seconds: recSeconds,
+          }),
+        }).catch(() => {});
+      }
       updateStatCards(data.summary);
       document.getElementById("regenBtn").disabled = false;
       collapseIntermediates();
@@ -1761,12 +2508,11 @@
   });
 
   function updateStatCards(summaryText) {
-    const decisions = (summaryText.match(/決定|合意|確定|承認/g) || []).length;
-    const todos = (summaryText.match(/TODO|タスク|アクション|対応|担当|実施/g) || []).length;
-    const confirms = (summaryText.match(/要確認|不明|確認|検討|検討|？|要確認/g) || []).length;
-    document.getElementById("decisionCount").innerHTML = `${decisions}<small>件</small>`;
-    document.getElementById("todoCount").innerHTML = `${todos}<small>件</small>`;
-    document.getElementById("confirmCount").innerHTML = `${confirms}<small>件</small>`;
+    const ids = ["decisionCount", "todoCount", "confirmCount"];
+    ids.forEach((id, i) => {
+      const count = (summaryText.match(currentStatConfig[i].re) || []).length;
+      document.getElementById(id).innerHTML = `${count}<small>件</small>`;
+    });
   }
 
   // ---- 要約 ----
@@ -1956,8 +2702,19 @@
         startTimer();
         requestAnimationFrame(startVisualizer);
         recognition.start();
+        // PRO/PREMIUM: MediaRecorder で音声も並行録音（Groq Whisper 用）
+        if (userPlan !== "free" && micStream) {
+          try {
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
+            mediaRecorder = new MediaRecorder(micStream, { mimeType });
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+            mediaRecorder.start();
+          } catch (e) { console.warn("MediaRecorder 初期化失敗:", e); mediaRecorder = null; }
+        }
         document.getElementById("navRecBtn").classList.add("recording");
         setFabState(true);
+        document.querySelector(".audio-player-card").style.display = "";
       } else {
         finishRecording();
       }
@@ -1977,6 +2734,38 @@
       setRecState("idle");
       document.getElementById("navRecBtn").classList.remove("recording");
       setFabState(false);
+
+      // PRO/PREMIUM: Groq Whisper で高精度文字起こし
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        const durSec = recSeconds;
+        mediaRecorder.stop();
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(audioChunks, { type: audioChunks[0]?.type || "audio/webm" });
+          const card = addSummaryCard("Groq Whisper で高精度文字起こし中...", true);
+          card.querySelector(".summary-card-num").textContent = "━ 高精度文字起こし (Whisper) ━";
+          const fd = new FormData();
+          fd.append("file", blob, "recording.webm");
+          fd.append("duration_seconds", String(durSec));
+          const h = {};
+          if (authHeaders()["Authorization"]) h["Authorization"] = authHeaders()["Authorization"];
+          try {
+            const res = await fetch("/transcribe", { method: "POST", headers: h, body: fd });
+            if (res.ok) {
+              const data = await res.json();
+              card.querySelector(".summary-card-text").textContent = data.text;
+              card.querySelector("textarea").value = data.text;
+            } else {
+              const err = await res.json().catch(() => ({}));
+              card.querySelector(".summary-card-text").textContent = err.detail || "Whisper 処理に失敗しました。";
+            }
+          } catch {
+            card.querySelector(".summary-card-text").textContent = "Whisper 処理に失敗しました。";
+          }
+          card.querySelector(".summary-card-text").style.opacity = "1";
+          mediaRecorder = null;
+          audioChunks = [];
+        };
+      }
     }
 
   } else {
@@ -2026,34 +2815,105 @@
       list.innerHTML = '<p style="color:#a8a29e;font-size:0.88rem;padding:4px 16px 14px">まだ履歴がありません</p>';
       return;
     }
+    const iconSets = [
+      { bg: "#E0ECD8", color: "#647D58", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>` },
+      { bg: "#EDE8F5", color: "#7C5CBF", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>` },
+      { bg: "#FEF0D8", color: "#D97706", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>` },
+      { bg: "#DDF0F8", color: "#0284C7", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>` },
+    ];
+    const pinFilled = `<svg viewBox="0 0 24 24" fill="#647D58" width="15" height="15"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+    const pinOutline = `<svg viewBox="0 0 24 24" fill="none" stroke="#d6d3d1" stroke-width="2" width="15" height="15"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
     list.innerHTML = "";
-    chatSessions.slice(0, 5).forEach(s => {
+    chatSessions.slice(0, 5).forEach((s, i) => {
+      const ic = iconSets[i % iconSets.length];
       const el = document.createElement("div");
       el.className = "recent-chat-item";
       el.innerHTML = `
-        <div class="recent-chat-icon">💬</div>
+        <div class="recent-chat-icon" style="background:${ic.bg};color:${ic.color}">${ic.svg}</div>
         <div class="recent-chat-body">
           <div class="recent-chat-title">${s.title}</div>
           <div class="recent-chat-preview">${s.preview || "（内容なし）"}</div>
         </div>
-        <div class="recent-chat-meta">${formatRelTime(s.updatedAt)}</div>`;
+        <div class="recent-chat-meta">
+          <span>${formatRelTime(s.updatedAt)}</span>
+          <span>${s.pinned ? pinFilled : pinOutline}</span>
+        </div>`;
       el.addEventListener("click", () => openChatSession(s.id));
       list.appendChild(el);
     });
   }
 
+  function setChatView(hub, allList, conv) {
+    document.getElementById("chatHub").style.display = hub ? "" : "none";
+    document.getElementById("chatAllList").style.display = allList ? "flex" : "none";
+    document.getElementById("chatConversation").style.display = conv ? "flex" : "none";
+    document.querySelector(".chat-input-area").style.display = conv || hub ? "" : "none";
+  }
+
   function showChatHub() {
     currentChatSessionId = null;
-    document.getElementById("chatHub").style.display = "";
-    document.getElementById("chatConversation").style.display = "none";
+    setChatView(true, false, false);
     renderRecentChats();
+  }
+
+  function showChatAllList() {
+    setChatView(false, true, false);
+    renderAllChats();
+  }
+
+  function renderAllChats() {
+    const list = document.getElementById("allChatsList");
+    document.getElementById("chatAllCount").textContent = chatSessions.length ? chatSessions.length + "件" : "";
+    if (!chatSessions.length) {
+      list.innerHTML = '<p style="color:#a8a29e;font-size:0.88rem;padding:20px">まだ履歴がありません</p>';
+      return;
+    }
+    const iconSets = [
+      { bg: "#E0ECD8", color: "#647D58", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>` },
+      { bg: "#EDE8F5", color: "#7C5CBF", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>` },
+      { bg: "#FEF0D8", color: "#D97706", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>` },
+      { bg: "#DDF0F8", color: "#0284C7", svg: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>` },
+    ];
+    const pinFilled = `<svg viewBox="0 0 24 24" fill="#647D58" width="15" height="15"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+    const pinOutline = `<svg viewBox="0 0 24 24" fill="none" stroke="#d6d3d1" stroke-width="2" width="15" height="15"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+    const todayStr = new Date().toDateString();
+    const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+    let lastGroup = null;
+    list.innerHTML = "";
+    chatSessions.forEach((s, i) => {
+      const d = new Date(s.updatedAt);
+      const dStr = d.toDateString();
+      const groupLabel = dStr === todayStr ? "今日" : dStr === yesterdayStr ? "昨日" : `${d.getMonth()+1}月${d.getDate()}日`;
+      if (groupLabel !== lastGroup) {
+        lastGroup = groupLabel;
+        const hdr = document.createElement("div");
+        hdr.style.cssText = "font-size:0.75rem;color:#a8a29e;font-weight:500;padding:14px 20px 6px;letter-spacing:0.06em;text-transform:uppercase";
+        hdr.textContent = groupLabel;
+        list.appendChild(hdr);
+      }
+      const ic = iconSets[i % iconSets.length];
+      const el = document.createElement("div");
+      el.className = "recent-chat-item";
+      el.style.cssText = "padding:12px 20px;border-top:1px solid #F0E8DE";
+      el.innerHTML = `
+        <div class="recent-chat-icon" style="background:${ic.bg};color:${ic.color}">${ic.svg}</div>
+        <div class="recent-chat-body">
+          <div class="recent-chat-title">${s.title}</div>
+          <div class="recent-chat-preview">${s.preview || "（内容なし）"}</div>
+        </div>
+        <div class="recent-chat-meta">
+          <span>${formatRelTime(s.updatedAt)}</span>
+          <span>${s.pinned ? pinFilled : pinOutline}</span>
+        </div>`;
+      el.addEventListener("click", () => openChatSession(s.id));
+      list.appendChild(el);
+    });
   }
 
   function openChatSession(id) {
     currentChatSessionId = id;
     const s = chatSessions.find(x => x.id === id);
-    document.getElementById("chatHub").style.display = "none";
-    document.getElementById("chatConversation").style.display = "flex";
+    setChatView(false, false, true);
     document.getElementById("chatConvTitle").textContent = s ? s.title : "チャット";
     const box = document.getElementById("chatMessages");
     box.innerHTML = "";
@@ -2068,6 +2928,8 @@
   }
 
   document.getElementById("chatBackBtn").addEventListener("click", showChatHub);
+  document.getElementById("chatAllBackBtn").addEventListener("click", showChatHub);
+  document.getElementById("chatSeeAllBtn").addEventListener("click", showChatAllList);
   document.getElementById("newChatCard").addEventListener("click", () => {
     startNewChat(null);
     document.getElementById("chatInput").focus();
@@ -2139,8 +3001,14 @@
         headers: authHeaders(),
         body: JSON.stringify({ session_id: currentChatSessionId, message: text, scene: currentScene }),
       });
-      const data = await res.json();
       typing.remove();
+      if (res.status === 429) {
+        const err = await res.json().catch(() => ({}));
+        addChatMsg("ai", `制限: ${err.detail || "利用上限に達しました。"}`);
+        document.getElementById("chatSendBtn").disabled = false;
+        return;
+      }
+      const data = await res.json();
       s.messages.push({ role: "assistant", content: data.reply });
       const choices = [...data.reply.matchAll(/^[１1２2３3][\.\．]/gm)].map((_, i) => i);
       addChatMsg("ai", data.reply, choices);
@@ -2165,6 +3033,129 @@
   document.getElementById("chatInput").addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(e.target.value); }
   });
+
+  // ---- プラン表示更新 ----
+  function updatePlanUI(me) {
+    const plan = me.plan || "free";
+    userPlan = plan;
+    const badge = document.getElementById("planBadge");
+    if (badge) badge.textContent = plan.toUpperCase();
+
+    const usage = me.usage || {};
+    const secs  = usage.transcription_seconds || 0;
+    const lim   = usage.transcription_limit   || 3600;
+    const mins  = Math.floor(secs / 60);
+    const limH  = Math.floor(lim / 3600);
+    const usageText = document.getElementById("usageText");
+    if (usageText) usageText.textContent = `${mins}分 / ${limH}時間`;
+    const usageFill = document.getElementById("usageFill");
+    if (usageFill) usageFill.style.width = Math.min(100, (secs / lim) * 100) + "%";
+
+    // PRO/PREMIUM はサブスク管理を表示、アップグレードボタンを隠す
+    const billingGroup  = document.getElementById("billingGroup");
+    const upgradeBtn    = document.querySelector(".plan-upgrade-btn");
+    if (plan !== "free") {
+      if (billingGroup) billingGroup.style.display = "";
+      if (upgradeBtn)   upgradeBtn.style.display   = "none";
+    }
+
+    // 学生メール判定（モーダルで学生タブを表示）
+    const email = document.getElementById("profileEmail")?.textContent || "";
+    if (email.endsWith(".ac.jp")) {
+      document.getElementById("studentIntervalBtn").style.display = "";
+      document.getElementById("studentNote").style.display = "";
+    }
+  }
+
+  // ---- アップグレードモーダル ----
+  const PRICES = {
+    pro:     { monthly: "¥1,480", yearly: "¥1,200", student: "¥680" },
+    premium: { monthly: "¥2,480", yearly: "¥2,000", student: "¥1,280" },
+  };
+
+  let upgradeSelectedPlan     = "pro";
+  let upgradeSelectedInterval = "monthly";
+
+  function openUpgradeModal() {
+    document.getElementById("upgradeModal").classList.remove("hidden");
+    renderUpgradePrices();
+  }
+  function closeUpgradeModal() {
+    document.getElementById("upgradeModal").classList.add("hidden");
+  }
+
+  function renderUpgradePrices() {
+    const suffix = upgradeSelectedInterval === "monthly" ? "/月" : "/月（年払い）";
+    document.getElementById("proPriceLabel").innerHTML =
+      `${PRICES.pro[upgradeSelectedInterval]}<small>${suffix}</small>`;
+    document.getElementById("premiumPriceLabel").innerHTML =
+      `${PRICES.premium[upgradeSelectedInterval]}<small>${suffix}</small>`;
+  }
+
+  document.querySelector(".plan-upgrade-btn")?.addEventListener("click", openUpgradeModal);
+  document.getElementById("upgradeModal").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeUpgradeModal();
+  });
+
+  document.querySelectorAll(".interval-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".interval-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      upgradeSelectedInterval = btn.dataset.interval;
+      renderUpgradePrices();
+    });
+  });
+
+  document.querySelectorAll(".upgrade-plan-card").forEach(card => {
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".upgrade-plan-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      upgradeSelectedPlan = card.dataset.plan;
+    });
+  });
+
+  document.getElementById("upgradeSubmitBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("upgradeSubmitBtn");
+    btn.disabled = true;
+    btn.textContent = "処理中...";
+    try {
+      const res = await fetch("/billing/checkout", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ plan: upgradeSelectedPlan, interval: upgradeSelectedInterval }),
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.detail || "エラーが発生しました");
+        btn.disabled = false;
+        btn.textContent = "今すぐ始める";
+      }
+    } catch {
+      alert("エラーが発生しました");
+      btn.disabled = false;
+      btn.textContent = "今すぐ始める";
+    }
+  });
+
+  // サブスク管理（Stripe ポータル）
+  document.getElementById("manageSubBtn")?.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/billing/portal", { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok && data.url) window.location.href = data.url;
+    } catch {
+      alert("エラーが発生しました");
+    }
+  });
+
+  // 決済完了/キャンセルの通知
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("payment") === "success") {
+    history.replaceState({}, "", "/");
+    setTimeout(() => alert("アップグレードが完了しました！プランが反映されています。"), 500);
+  }
 
   // PWA Service Worker
   if ("serviceWorker" in navigator) {

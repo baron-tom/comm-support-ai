@@ -2,16 +2,40 @@ services:
   - type: web
     name: comm-support-ai
     runtime: python
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /config
     envVars:
-      - key: GEMINI_API_KEY
-        sync: false        # Renderのダッシュボードで手動設定
       - key: LLM_BACKEND
         value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_YEARLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_STUDENT
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_YEARLY
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_STUDENT
+        sync: false
+      - key: APP_URL
         sync: false
