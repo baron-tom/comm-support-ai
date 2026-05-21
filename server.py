@@ -492,7 +492,7 @@ def get_config():
     return {
         "supabase_url": SUPABASE_URL,
         "supabase_anon_key": SUPABASE_ANON_KEY,
-        "auth_enabled": bool(SUPABASE_JWT_SECRET),
+        "auth_enabled": False,  # TODO: Supabase URL修正後にbool(SUPABASE_JWT_SECRET)に戻す
     }
 
 
