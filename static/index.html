@@ -1724,7 +1724,7 @@
   </div>
   <div class="legal-scroll">
     <h2 class="legal-title">利用規約</h2>
-    <div class="legal-date">最終更新：2026年5月16日</div>
+    <div class="legal-date">最終更新：2026年5月22日</div>
 
     <div class="legal-section">
       <h3>第1条（適用）</h3>
@@ -1749,22 +1749,27 @@
     </div>
 
     <div class="legal-section">
-      <h3>第4条（免責事項）</h3>
+      <h3>第4条（外部AIサービスの利用）</h3>
+      <p>本サービスは、テキスト要約・AI会話処理のためにGoogle Gemini API、音声文字起こしのためにGroq Whisper APIを利用しています。これらの機能を使用する際、入力した音声・テキストデータが各APIプロバイダーのサーバーへ送信されます。各プロバイダーのAPIポリシーにより、送信データはAIモデルの学習には使用されません。機密情報・個人を特定できる情報の入力はお控えください。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第5条（免責事項）</h3>
       <p>本サービスは現状有姿で提供されます。AI生成コンテンツの正確性・完全性について保証しません。本サービスの利用により生じた損害について、当社は一切の責任を負いません。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第5条（サービスの変更・停止）</h3>
+      <h3>第6条（サービスの変更・停止）</h3>
       <p>当社はユーザーへの事前通知なく、本サービスの内容変更・一時停止・終了を行う場合があります。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第6条（知的財産権）</h3>
+      <h3>第7条（知的財産権）</h3>
       <p>本サービスに関する著作権その他一切の知的財産権は、当社または正当な権利者に帰属します。ユーザーが入力・録音した音声・テキストの権利はユーザーに帰属します。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第7条（準拠法・管轄）</h3>
+      <h3>第8条（準拠法・管轄）</h3>
       <p>本規約は日本法に準拠します。本サービスに関する紛争は、東京地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
     </div>
   </div>
@@ -1777,7 +1782,7 @@
   </div>
   <div class="legal-scroll">
     <h2 class="legal-title">プライバシーポリシー</h2>
-    <div class="legal-date">最終更新：2026年5月16日</div>
+    <div class="legal-date">最終更新：2026年5月22日</div>
 
     <div class="legal-section">
       <h3>1. 収集する情報</h3>
@@ -1800,18 +1805,20 @@
     </div>
 
     <div class="legal-section">
-      <h3>3. 第三者提供</h3>
-      <p>当社は、以下の場合を除きユーザーの個人情報を第三者に提供しません。</p>
+      <h3>3. 外部サービスへのデータ送信</h3>
+      <p>本サービスは機能提供のために以下の外部サービスを利用しています。各サービスのAPIポリシーに基づき、送信データはAIモデルの学習には使用されません。</p>
       <ul>
-        <li>ユーザーの同意がある場合</li>
-        <li>法令に基づく場合</li>
-        <li>AI処理のためGoogle Gemini APIへテキストを送信する場合（音声の原文は送信されません）</li>
+        <li><strong>Google Gemini API（Google LLC）：</strong>AI要約・チャット処理のため、文字起こしテキストを送信します</li>
+        <li><strong>Groq Whisper API（Groq Inc.）：</strong>音声文字起こし処理のため、PRO/PREMIUMプランで録音音声データを送信します</li>
+        <li><strong>Supabase（Supabase Inc.）：</strong>アカウント認証・要約履歴・利用量データを保存します（米国サーバー）</li>
+        <li><strong>Stripe（Stripe Inc.）：</strong>有料プランの決済処理のため、カード情報等をStripeに直接送信します（当社はカード情報を保持しません）</li>
       </ul>
+      <p>⚠️ 氏名・住所・電話番号など個人を特定できる情報や、機密性の高い情報の入力はお控えください。</p>
     </div>
 
     <div class="legal-section">
       <h3>4. データの保存と削除</h3>
-      <p>文字起こし・要約データはブラウザのlocalStorageに保存されます。サーバー側への保存は認証ユーザーのみです。アカウント削除の申請により全データを消去します。</p>
+      <p>文字起こし・要約データはブラウザのlocalStorageおよびサーバー（認証ユーザーのみ）に保存されます。FREEプランの履歴は7日間保持後に削除されます。アカウント削除の申請により全データを消去します。</p>
     </div>
 
     <div class="legal-section">
