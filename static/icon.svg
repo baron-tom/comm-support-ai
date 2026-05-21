@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#647D58"/>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <defs>
+    <radialGradient id="g" cx="30%" cy="25%" r="70%">
+      <stop offset="0%" stop-color="#8FBF7A" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#647D58" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- マイク本体 -->
+  <rect x="208" y="112" width="96" height="176" rx="48" fill="white"/>
+  <!-- マイクのアーム -->
+  <path d="M176 272 C176 326 336 326 336 272" fill="none" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <!-- スタンド縦棒 -->
+  <line x1="256" y1="326" x2="256" y2="376" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <!-- スタンド台 -->
+  <line x1="208" y1="376" x2="304" y2="376" stroke="white" stroke-width="22" stroke-linecap="round"/>
+  <!-- 波形ライン -->
+  <path d="M148 240 Q160 210 172 240 Q184 270 196 240" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+  <path d="M316 240 Q328 210 340 240 Q352 270 364 240" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+</svg>
