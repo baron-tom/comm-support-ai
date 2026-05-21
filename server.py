@@ -234,12 +234,15 @@ def call_llm(system_prompt: str, messages: list[dict], plan: str = "free") -> st
         return resp.json()["message"]["content"]
 
 
-def call_groq_whisper(audio_bytes: bytes, filename: str) -> str:
+def call_groq_whisper(audio_bytes: bytes, filename: str, language: str | None = "ja") -> str:
+    data: dict = {"model": "whisper-large-v3", "response_format": "text"}
+    if language:
+        data["language"] = language
     resp = requests.post(
         GROQ_WHISPER_URL,
         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
         files={"file": (filename, audio_bytes, "audio/webm")},
-        data={"model": "whisper-large-v3", "language": "ja", "response_format": "text"},
+        data=data,
         timeout=120,
     )
     resp.raise_for_status()
@@ -528,6 +531,7 @@ def get_me(user=Depends(get_current_user)):
 async def transcribe(
     file: UploadFile = File(...),
     duration_seconds: int = Form(default=0),
+    language: str = Form(default="ja"),
     user=Depends(get_current_user),
 ):
     """Groq Whisper による高精度文字起こし（PRO/PREMIUM のみ）"""
@@ -554,7 +558,7 @@ async def transcribe(
         raise HTTPException(status_code=503, detail="Groq API キーが設定されていません")
 
     audio_bytes = await file.read()
-    text = call_groq_whisper(audio_bytes, file.filename or "audio.webm")
+    text = call_groq_whisper(audio_bytes, file.filename or "audio.webm", language or None)
     increment_transcription_usage(user_id, year_month, duration_seconds)
     return {"text": text}
 

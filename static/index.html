@@ -1338,6 +1338,13 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
         </div>
+        <!-- 言語選択 -->
+        <div class="scene-chips show-on-idle" id="langChips" style="margin-bottom:8px">
+          <button class="scene-chip active" data-lang="ja-JP" data-whisper="ja">🇯🇵 日本語</button>
+          <button class="scene-chip" data-lang="en-US" data-whisper="en">🇺🇸 English</button>
+          <button class="scene-chip" data-lang="" data-whisper="">🌐 自動</button>
+        </div>
+
         <div class="meeting-meta">
           <span class="meeting-meta-item">
             <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13" style="color:#a8a29e"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
@@ -2617,6 +2624,18 @@
 
   // liveToggleBtn は現UIに存在しないため削除
 
+  // ---- 言語選択 ----
+  let currentLang = { sr: "ja-JP", whisper: "ja" };
+
+  document.getElementById("langChips").addEventListener("click", e => {
+    const chip = e.target.closest(".scene-chip");
+    if (!chip) return;
+    document.querySelectorAll("#langChips .scene-chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    currentLang = { sr: chip.dataset.lang, whisper: chip.dataset.whisper };
+    if (recognition) recognition.lang = currentLang.sr || "ja-JP";
+  });
+
   // ---- 音声認識（録音タブ） ----
   if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2746,6 +2765,7 @@
           const fd = new FormData();
           fd.append("file", blob, "recording.webm");
           fd.append("duration_seconds", String(durSec));
+          if (currentLang.whisper) fd.append("language", currentLang.whisper);
           const h = {};
           if (authHeaders()["Authorization"]) h["Authorization"] = authHeaders()["Authorization"];
           try {
