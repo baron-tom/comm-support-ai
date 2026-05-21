@@ -1,7 +1,7 @@
 {
-  "name": "コミュニケーション支援AI",
-  "short_name": "会話支援AI",
-  "description": "リアルタイム文字起こし・要約・発言支援",
+  "name": "Recote",
+  "short_name": "Recote",
+  "description": "音声録音・文字起こし・AI要約",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F5F0EA",
