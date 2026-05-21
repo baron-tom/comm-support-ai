@@ -1071,6 +1071,8 @@
       transition: all 0.15s;
     }
     .scene-chip.active { background: #647D58; border-color: #647D58; color: white; }
+    .transcript-entry.whisper-entry .transcript-text { color: #1A1512; }
+    .transcript-entry.whisper-entry .transcript-ts { color: #647D58; font-weight: 600; }
     .meeting-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
     .meeting-title-input {
       flex: 1; border: none;
@@ -2081,6 +2083,9 @@
   let isRecording = false;
   let mediaRecorder = null;
   let audioChunks = [];
+  let chunkInterval = null;
+  let whisperTranscript = "";
+  let whisperPrompt = "";
   let finalTranscript = "";
   let lastProcessedIndex = 0;
   let summarizedLength = 0;
@@ -2636,6 +2641,65 @@
     if (recognition) recognition.lang = currentLang.sr || "ja-JP";
   });
 
+  // ---- Whisper チャンク録音 ----
+  function startChunkRecording() {
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
+
+    function startChunk() {
+      const mr = new MediaRecorder(micStream, { mimeType });
+      const chunks = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mr.onstop = async () => {
+        if (chunks.length === 0) return;
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size < 2000) return; // 短すぎるチャンクはスキップ
+        await sendChunkToWhisper(blob);
+      };
+      mr.start();
+      return mr;
+    }
+
+    mediaRecorder = startChunk();
+
+    chunkInterval = setInterval(() => {
+      if (!isRecording) { clearInterval(chunkInterval); return; }
+      const prev = mediaRecorder;
+      mediaRecorder = startChunk();          // 新チャンク開始
+      if (prev && prev.state === "recording") prev.stop(); // 前チャンクを処理
+    }, 15000);
+  }
+
+  async function sendChunkToWhisper(blob) {
+    const fd = new FormData();
+    fd.append("file", blob, "chunk.webm");
+    fd.append("duration_seconds", "15");
+    if (currentLang.whisper) fd.append("language", currentLang.whisper);
+    if (whisperPrompt) fd.append("prompt", whisperPrompt);
+
+    const h = {};
+    if (authHeaders()["Authorization"]) h["Authorization"] = authHeaders()["Authorization"];
+
+    try {
+      const res = await fetch("/transcribe", { method: "POST", headers: h, body: fd });
+      if (!res.ok) return;
+      const data = await res.json();
+      const text = data.text.trim();
+      if (!text) return;
+
+      whisperTranscript += (whisperTranscript ? " " : "") + text;
+      whisperPrompt = whisperTranscript.slice(-200);
+      finalTranscript = whisperTranscript;
+
+      // Whisper確定テキストを表示に追加
+      const elapsed = recStartTime ? Math.floor((Date.now() - recStartTime) / 1000) : 0;
+      const ts = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
+      transcriptEntries.push({ ts, text, whisper: true });
+      renderTranscriptTimeline("");
+    } catch (e) {
+      console.warn("Whisperチャンク失敗:", e);
+    }
+  }
+
   // ---- 音声認識（録音タブ） ----
   if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2649,8 +2713,8 @@
       box.innerHTML = "";
       transcriptEntries.forEach(entry => {
         const row = document.createElement("div");
-        row.className = "transcript-entry";
-        row.innerHTML = `<span class="transcript-ts">${entry.ts}</span><span class="transcript-text">${entry.text}</span>`;
+        row.className = "transcript-entry" + (entry.whisper ? " whisper-entry" : "");
+        row.innerHTML = `<span class="transcript-ts">${entry.ts}</span><span class="transcript-text">${entry.whisper ? "✦ " : ""}${entry.text}</span>`;
         box.appendChild(row);
       });
       if (interim) {
@@ -2712,6 +2776,8 @@
         summarizedLength = 0;
         recSeconds = 0;
         transcriptEntries = [];
+        whisperTranscript = "";
+        whisperPrompt = "";
         recStartTime = Date.now();
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
@@ -2721,15 +2787,13 @@
         startTimer();
         requestAnimationFrame(startVisualizer);
         recognition.start();
-        // PRO/PREMIUM: MediaRecorder で音声も並行録音（Groq Whisper 用）
+        // PRO/PREMIUM: 15秒チャンクでGroq Whisper
         if (userPlan !== "free" && micStream) {
           try {
-            const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
-            mediaRecorder = new MediaRecorder(micStream, { mimeType });
-            audioChunks = [];
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.start();
-          } catch (e) { console.warn("MediaRecorder 初期化失敗:", e); mediaRecorder = null; }
+            whisperTranscript = "";
+            whisperPrompt = "";
+            startChunkRecording();
+          } catch (e) { console.warn("チャンク録音初期化失敗:", e); }
         }
         document.getElementById("navRecBtn").classList.add("recording");
         setFabState(true);
@@ -2754,37 +2818,11 @@
       document.getElementById("navRecBtn").classList.remove("recording");
       setFabState(false);
 
-      // PRO/PREMIUM: Groq Whisper で高精度文字起こし
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        const durSec = recSeconds;
+      // PRO/PREMIUM: 最後のチャンクを送信して終了
+      if (chunkInterval) { clearInterval(chunkInterval); chunkInterval = null; }
+      if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-        mediaRecorder.onstop = async () => {
-          const blob = new Blob(audioChunks, { type: audioChunks[0]?.type || "audio/webm" });
-          const card = addSummaryCard("Groq Whisper で高精度文字起こし中...", true);
-          card.querySelector(".summary-card-num").textContent = "━ 高精度文字起こし (Whisper) ━";
-          const fd = new FormData();
-          fd.append("file", blob, "recording.webm");
-          fd.append("duration_seconds", String(durSec));
-          if (currentLang.whisper) fd.append("language", currentLang.whisper);
-          const h = {};
-          if (authHeaders()["Authorization"]) h["Authorization"] = authHeaders()["Authorization"];
-          try {
-            const res = await fetch("/transcribe", { method: "POST", headers: h, body: fd });
-            if (res.ok) {
-              const data = await res.json();
-              card.querySelector(".summary-card-text").textContent = data.text;
-              card.querySelector("textarea").value = data.text;
-            } else {
-              const err = await res.json().catch(() => ({}));
-              card.querySelector(".summary-card-text").textContent = err.detail || "Whisper 処理に失敗しました。";
-            }
-          } catch {
-            card.querySelector(".summary-card-text").textContent = "Whisper 処理に失敗しました。";
-          }
-          card.querySelector(".summary-card-text").style.opacity = "1";
-          mediaRecorder = null;
-          audioChunks = [];
-        };
+        mediaRecorder = null;
       }
     }
 
