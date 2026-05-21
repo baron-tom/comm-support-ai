@@ -2643,7 +2643,11 @@
 
   // ---- Whisper チャンク録音 ----
   function startChunkRecording() {
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/ogg";
+    const mimeType =
+      MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" :
+      MediaRecorder.isTypeSupported("audio/mp4")  ? "audio/mp4"  :
+      MediaRecorder.isTypeSupported("audio/ogg")  ? "audio/ogg"  : null;
+    if (!mimeType) { console.warn("MediaRecorder: 対応コーデックなし"); return; }
 
     function startChunk() {
       const mr = new MediaRecorder(micStream, { mimeType });
@@ -2670,8 +2674,9 @@
   }
 
   async function sendChunkToWhisper(blob) {
+    const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
     const fd = new FormData();
-    fd.append("file", blob, "chunk.webm");
+    fd.append("file", blob, `chunk.${ext}`);
     fd.append("duration_seconds", "15");
     if (currentLang.whisper) fd.append("language", currentLang.whisper);
     if (whisperPrompt) fd.append("prompt", whisperPrompt);
