@@ -234,7 +234,7 @@ def call_llm(system_prompt: str, messages: list[dict], plan: str = "free") -> st
         return resp.json()["message"]["content"]
 
 
-def call_groq_whisper(audio_bytes: bytes, filename: str, language: str | None = "ja", prompt: str = "") -> str:
+def call_groq_whisper(audio_bytes: bytes, filename: str, language: str | None = "ja", prompt: str = "", mime_type: str = "audio/webm") -> str:
     data: dict = {"model": "whisper-large-v3", "response_format": "text"}
     if language:
         data["language"] = language
@@ -243,7 +243,7 @@ def call_groq_whisper(audio_bytes: bytes, filename: str, language: str | None = 
     resp = requests.post(
         GROQ_WHISPER_URL,
         headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        files={"file": (filename, audio_bytes, "audio/webm")},
+        files={"file": (filename, audio_bytes, mime_type)},
         data=data,
         timeout=120,
     )
@@ -549,7 +549,8 @@ async def transcribe(
         raise HTTPException(status_code=503, detail="Groq API キーが設定されていません")
 
     audio_bytes = await file.read()
-    text = call_groq_whisper(audio_bytes, file.filename or "audio.webm", language or None, prompt)
+    mime_type = file.content_type or "audio/webm"
+    text = call_groq_whisper(audio_bytes, file.filename or "audio.webm", language or None, prompt, mime_type)
     increment_transcription_usage(user_id, year_month, duration_seconds)
     return {"text": text}
 
@@ -599,7 +600,8 @@ def chat(req: ChatRequest, user=Depends(get_current_user)):
                 detail=f"本日の AI チャット上限（{daily_lim}回）に達しました。PRO プランにアップグレードすると無制限になります。",
             )
 
-    session_key = user_id if user_id != "dev" else req.session_id
+    # session_id ごとに独立したコンテキスト（ユーザーIDで共有しない）
+    session_key = req.session_id
     history = _load_session(user_id, session_key)
     history.append({"role": "user", "content": req.message})
 
@@ -722,7 +724,7 @@ def list_summaries(user=Depends(get_current_user)):
 @app.post("/reset")
 def reset(req: ResetRequest, user=Depends(get_current_user)):
     user_id = user.get("sub", "dev")
-    session_key = user_id if user_id != "dev" else req.session_id
+    session_key = req.session_id
     _mem_sessions.pop(session_key, None)
     return {"status": "ok"}
 

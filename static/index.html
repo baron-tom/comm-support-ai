@@ -2240,13 +2240,11 @@
   });
 
   // ---- アプリ状態 ----
-  let sessionId = "session_" + Date.now();
   let currentScene = "default";
   let lastHistoryUserId = null; // showApp重複呼び出し対策
   let recognition = null;
   let isRecording = false;
   let mediaRecorder = null;
-  let audioChunks = [];
   let chunkInterval = null;
   let whisperTranscript = "";
   let whisperPrompt = "";
@@ -2643,10 +2641,19 @@
       el.className = "history-item";
       const timeStr = item.time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
       const typeLabel = item.type === "summary" ? "📋 要約" : item.type === "transcript" ? "🎙 録音" : item.type === "chat" ? "💬 チャット" : "📄";
-      el.innerHTML = `
-        <div class="history-item-title">${item.topic}</div>
-        <div class="history-item-preview">${(item.content || "").replace(/\n/g, " ").slice(0, 80)}</div>
-        <div class="history-item-meta">${timeStr} · ${typeLabel}</div>`;
+      // XSS対策: textContentで安全にセット
+      const titleEl = document.createElement("div");
+      titleEl.className = "history-item-title";
+      titleEl.textContent = item.topic;
+      const previewEl = document.createElement("div");
+      previewEl.className = "history-item-preview";
+      previewEl.textContent = (item.content || "").replace(/\n/g, " ").slice(0, 80);
+      const metaEl = document.createElement("div");
+      metaEl.className = "history-item-meta";
+      metaEl.textContent = `${timeStr} · ${typeLabel}`;
+      el.appendChild(titleEl);
+      el.appendChild(previewEl);
+      el.appendChild(metaEl);
       el.addEventListener("click", () => openHistoryDetail(item));
       list.appendChild(el);
     });
@@ -2817,7 +2824,6 @@
   let recState = "idle"; // "idle" | "recording" | "paused"
   let recSeconds = 0;
   let timerInterval = null;
-  let liveVisible = true;
 
   function setRecState(state) {
     recState = state;
