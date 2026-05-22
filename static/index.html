@@ -1988,17 +1988,16 @@
     } else {
       showAuth();
     }
-  }
 
-  // Googleログインボタン
-  document.getElementById("googleBtn").addEventListener("click", async () => {
-    if (!supabaseClient) return;
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
+    // Googleログインボタン（supabaseClient初期化後に登録）
+    document.getElementById("googleBtn").addEventListener("click", async () => {
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) alert("エラー: " + error.message);
     });
-    if (error) alert("エラー: " + error.message);
-  });
+  }
 
   // 送信ボタン
   document.getElementById("authBtn").addEventListener("click", async () => {
