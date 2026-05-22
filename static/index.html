@@ -2013,7 +2013,11 @@
 
   async function showApp(userEmail) {
     document.getElementById("authOverlay").classList.add("hidden");
-    loadHistoryFromStorage();
+    // 同一ユーザーで重複呼び出しされても履歴を上書きしない
+    if (currentUserId !== lastHistoryUserId) {
+      loadHistoryFromStorage();
+      lastHistoryUserId = currentUserId;
+    }
     try {
       const meRes = await fetch("/me", { headers: authHeaders() });
       if (meRes.ok) { const me = await meRes.json(); updatePlanUI(me); }
@@ -2238,6 +2242,7 @@
   // ---- アプリ状態 ----
   let sessionId = "session_" + Date.now();
   let currentScene = "default";
+  let lastHistoryUserId = null; // showApp重複呼び出し対策
   let recognition = null;
   let isRecording = false;
   let mediaRecorder = null;
@@ -2637,10 +2642,11 @@
       const el = document.createElement("div");
       el.className = "history-item";
       const timeStr = item.time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      const typeLabel = item.type === "summary" ? "📋 要約" : item.type === "transcript" ? "🎙 録音" : item.type === "chat" ? "💬 チャット" : "📄";
       el.innerHTML = `
         <div class="history-item-title">${item.topic}</div>
-        <div class="history-item-preview">${(item.content || "").replace(/\n/g, " ")}</div>
-        <div class="history-item-meta">${timeStr} · ${item.type === "summary" ? "要約" : "発言支援"}</div>`;
+        <div class="history-item-preview">${(item.content || "").replace(/\n/g, " ").slice(0, 80)}</div>
+        <div class="history-item-meta">${timeStr} · ${typeLabel}</div>`;
       el.addEventListener("click", () => openHistoryDetail(item));
       list.appendChild(el);
     });
@@ -3074,6 +3080,9 @@
       const remaining = finalTranscript.slice(summarizedLength);
       if (remaining.trim()) triggerSummarize(remaining);
       if (finalTranscript.trim()) {
+        // 録音テキストを履歴に保存
+        const recTopic = document.getElementById("topicInput").value.trim() || "録音";
+        saveToHistory("transcript", finalTranscript, recTopic);
         triggerCorrection();
         triggerFinalSummary();
       }
@@ -3340,7 +3349,8 @@
       s.preview = data.reply.replace(/\n/g, " ").slice(0, 45);
       s.updatedAt = new Date().toISOString();
       persistChatSessions();
-      saveToHistory("chat", data.reply);
+      // チャット履歴: Q&Aペアで保存
+      saveToHistory("chat", `【質問】${text}\n\n【回答】${data.reply}`, s.title || "チャット");
     } catch {
       typing.remove();
       addChatMsg("ai", "エラーが発生しました。");
