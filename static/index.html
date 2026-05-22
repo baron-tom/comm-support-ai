@@ -2063,6 +2063,14 @@
     supabaseClient = window.supabase.createClient(config.supabase_url, config.supabase_anon_key);
 
     supabaseClient.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESHED はトークンだけ更新。historyLog をリセットしない
+      if (event === "TOKEN_REFRESHED") {
+        if (session) currentToken = session.access_token;
+        return;
+      }
+      // INITIAL_SESSION は getSession() で処理するため無視
+      if (event === "INITIAL_SESSION") return;
+
       if (session) {
         currentToken = session.access_token;
         currentUserId = session.user.id;
@@ -2962,11 +2970,36 @@
       }
     };
 
+    let recognitionRunning = false;
+
     recognition.onend = () => {
-      if (isRecording) { lastProcessedIndex = 0; recognition.start(); }
+      recognitionRunning = false;
+      if (isRecording) {
+        lastProcessedIndex = 0;
+        recognitionRunning = true;
+        try {
+          recognition.start();
+        } catch (e) {
+          recognitionRunning = false;
+          setTimeout(() => {
+            if (isRecording && !recognitionRunning) {
+              recognitionRunning = true;
+              try { recognition.start(); } catch {}
+            }
+          }, 300);
+        }
+      }
     };
     recognition.onerror = () => {
-      if (isRecording) setTimeout(() => recognition.start(), 1000);
+      recognitionRunning = false;
+      if (isRecording) {
+        setTimeout(() => {
+          if (isRecording && !recognitionRunning) {
+            recognitionRunning = true;
+            try { recognition.start(); } catch {}
+          }
+        }, 1000);
+      }
     };
 
     function setFabState(recording) {
@@ -3000,13 +3033,23 @@
         setRecState("recording");
         startTimer();
         requestAnimationFrame(startVisualizer);
-        // recognition.start() は前回の停止が完了してから呼ぶ（InvalidStateError対策）
-        try {
-          recognition.start();
-        } catch (e) {
-          console.warn("recognition.start失敗、200ms後にリトライ:", e);
-          setTimeout(() => { try { recognition.start(); } catch(e2) { console.error("recognition再起動失敗:", e2); } }, 200);
+        // recognitionRunning=trueなら onend が発火して自動再起動するので呼ばない
+        if (!recognitionRunning) {
+          recognitionRunning = true;
+          try {
+            recognition.start();
+          } catch (e) {
+            recognitionRunning = false;
+            console.warn("recognition.start失敗、300ms後にリトライ:", e);
+            setTimeout(() => {
+              if (isRecording && !recognitionRunning) {
+                recognitionRunning = true;
+                try { recognition.start(); } catch(e2) { recognitionRunning = false; console.error("recognition再起動失敗:", e2); }
+              }
+            }, 300);
+          }
         }
+        // else: 前回のonendが発火したとき isRecording=true なら自動でstartされる
         // PRO/PREMIUM: 15秒チャンクでGroq Whisper
         if (userPlan !== "free" && micStream) {
           try {
