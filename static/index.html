@@ -2596,6 +2596,10 @@
   function saveToHistory(type, content, topic) {
     historyLog.unshift({ type, content, topic: topic || "無題", time: new Date(), scene: currentScene });
     persistHistory();
+    // 履歴タブが開いていれば即リフレッシュ
+    if (document.getElementById("screen-history")?.classList.contains("active")) {
+      renderHistory();
+    }
   }
 
   function renderHistory() {
@@ -2663,28 +2667,36 @@
         body: JSON.stringify({ text: finalTranscript, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
       });
       const data = await res.json();
+      if (!data.summary) {
+        card.querySelector(".summary-card-text").textContent = "エラー: " + (data.detail || JSON.stringify(data));
+        card.querySelector(".summary-card-text").style.opacity = "1";
+        return;
+      }
       card.querySelector(".summary-card-text").textContent = data.summary;
       card.querySelector("textarea").value = data.summary;
       card.querySelector(".summary-card-text").style.opacity = "1";
-      saveToHistory("summary", data.summary, (topic || "録音") + " 全体まとめ");
-      if (currentUserId) {
-        fetch("/summaries", {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({
-            topic: topic || "録音",
-            scene: currentScene,
-            transcript: finalTranscript,
-            summary: data.summary,
-            duration_seconds: recSeconds,
-          }),
-        }).catch(() => {});
+      if (data.summary) {
+        saveToHistory("summary", data.summary, (topic || "録音") + " 全体まとめ");
+        if (currentUserId) {
+          fetch("/summaries", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              topic: topic || "録音",
+              scene: currentScene,
+              transcript: finalTranscript,
+              summary: data.summary,
+              duration_seconds: recSeconds,
+            }),
+          }).catch(() => {});
+        }
+        updateStatCards(data.summary);
       }
-      updateStatCards(data.summary);
-      document.getElementById("regenBtn").disabled = false;
+      try { document.getElementById("regenBtn").disabled = false; } catch {}
       collapseIntermediates();
-    } catch {
-      card.querySelector(".summary-card-text").textContent = "エラーが発生しました。";
+    } catch (e) {
+      console.error("全体まとめエラー:", e);
+      card.querySelector(".summary-card-text").textContent = "エラーが発生しました。再試行してください。";
     }
   }
 
@@ -2931,7 +2943,8 @@
       renderTranscriptTimeline(interim);
 
       const unsummarized = finalTranscript.slice(summarizedLength);
-      if ((unsummarized.match(/。/g) || []).length >= 4) {
+      const periodCount = (unsummarized.match(/[。．.!?！？]/g) || []).length;
+      if (periodCount >= 4 || unsummarized.length >= 300) {
         summarizedLength += unsummarized.length;
         triggerSummarize(unsummarized);
       }
