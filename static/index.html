@@ -639,17 +639,21 @@
 
     /* ---- 履歴詳細オーバーレイ ---- */
     #historyDetail {
-      position: fixed; inset: 0; background: #F5F0EA;
+      position: fixed;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: 100%;
+      background: #F5F0EA;
       z-index: 500; display: flex; flex-direction: column;
-      max-width: 480px; left: 50%; transform: translateX(-50%);
     }
     #historyDetail.hd-hidden { display: none; }
 
     /* ---- 法的ページオーバーレイ ---- */
     .legal-overlay {
-      position: fixed; inset: 0; background: #F5F0EA;
+      position: fixed;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: 100%;
+      background: #F5F0EA;
       z-index: 600; display: flex; flex-direction: column;
-      max-width: 480px; left: 50%; transform: translateX(-50%);
     }
     .legal-overlay.leg-hidden { display: none; }
     .legal-scroll { flex: 1; overflow-y: auto; padding: 24px 24px 60px; }
@@ -681,10 +685,26 @@
       margin-bottom: 10px; line-height: 1.25;
     }
     .hd-meta {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 6px;
       font-size: 0.8rem; color: #78716c; margin-bottom: 20px;
+      white-space: nowrap; overflow: hidden;
     }
-    .hd-meta svg { color: #a8a29e; flex-shrink: 0; }
+    .hd-type-badge {
+      font-size: 0.72rem; font-weight: 600; padding: 2px 8px;
+      border-radius: 9999px; background: #F0E8DE; color: #78716c;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .hd-audio-wrap {
+      background: #FDFAF6; border: 1px solid #E8DDD2;
+      border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;
+    }
+    .hd-audio-label {
+      font-size: 0.75rem; color: #a8a29e; margin-bottom: 6px;
+    }
+    .hd-audio-wrap audio { width: 100%; height: 36px; }
+    .hd-audio-nodata {
+      font-size: 0.8rem; color: #d6d3d1; text-align: center; padding: 6px 0;
+    }
     .hd-content {
       font-size: 0.92rem; color: #292524; line-height: 1.85;
       white-space: pre-wrap; background: #FDFAF6;
@@ -694,7 +714,12 @@
     .hd-ask-btn {
       width: 100%; padding: 14px; border: none; border-radius: 14px;
       background: #647D58; color: white; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; font-family: 'Inter', sans-serif;
+      cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap;
+    }
+    .hd-del-btn {
+      width: 100%; padding: 11px; border: 1px solid #E8DDD2; border-radius: 14px;
+      background: none; color: #a8a29e; font-size: 0.88rem;
+      cursor: pointer; font-family: 'Inter', sans-serif; margin-top: 10px;
     }
 
     /* ---- 履歴画面 ---- */
@@ -1846,9 +1871,14 @@
     <span id="hdSceneBadge" class="hd-scene-badge"></span>
     <h2 id="hdTitle" class="hd-title"></h2>
     <div id="hdMeta" class="hd-meta"></div>
+    <div id="hdAudioWrap" class="hd-audio-wrap" style="display:none">
+      <div class="hd-audio-label">🎙 録音音声</div>
+      <audio id="hdAudioPlayer" controls></audio>
+    </div>
     <div class="stat-cards-row" id="hdStatRow"></div>
     <div id="hdContent" class="hd-content"></div>
-    <button id="hdAskBtn" class="hd-ask-btn">チャットでこの内容について質問する</button>
+    <button id="hdAskBtn" class="hd-ask-btn">💬 チャットで質問する</button>
+    <button id="hdDelBtn" class="hd-del-btn">🗑 この履歴を削除</button>
   </div>
 </div>
 
@@ -2131,7 +2161,10 @@
   // ---- 履歴詳細 ----
   const sceneToLabel = { work: "会社", class: "学校", default: "その他", daily: "日常", medical: "医療" };
 
+  let currentDetailItem = null;
+
   function openHistoryDetail(item) {
+    currentDetailItem = item;
     const badge = document.getElementById("hdSceneBadge");
     badge.textContent = sceneToLabel[item.scene] || "その他";
     badge.style.display = item.scene ? "inline-block" : "none";
@@ -2142,12 +2175,27 @@
     const wdays = ["日","月","火","水","木","金","土"];
     const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} (${wdays[d.getDay()]})`;
     const timeStr = d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-    document.getElementById("hdMeta").innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-      <span>${dateStr}</span>
-      <span style="color:#d6d3d1">·</span>
-      <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-      <span>${timeStr}</span>`;
+    const typeLabel = item.type === "summary" ? "📋 要約" : item.type === "transcript" ? "🎙 録音" : item.type === "chat" ? "💬 チャット" : "📄";
+    const meta = document.getElementById("hdMeta");
+    meta.innerHTML = "";
+    const typeBadge = document.createElement("span");
+    typeBadge.className = "hd-type-badge";
+    typeBadge.textContent = typeLabel;
+    const dateSp = document.createElement("span");
+    dateSp.textContent = `${dateStr} ${timeStr}`;
+    meta.appendChild(typeBadge);
+    meta.appendChild(dateSp);
+
+    // 音声プレイヤー（録音タイプのみ）
+    const audioWrap = document.getElementById("hdAudioWrap");
+    const audioEl = document.getElementById("hdAudioPlayer");
+    if (item.type === "transcript" && item.audioUrl) {
+      audioEl.src = item.audioUrl;
+      audioWrap.style.display = "";
+    } else {
+      audioEl.src = "";
+      audioWrap.style.display = "none";
+    }
 
     const text = item.content || "";
     const decisions = (text.match(/決定|合意|確定|承認/g) || []).length;
@@ -2187,6 +2235,15 @@
     showChatHub();
     const content = document.getElementById("hdContent").textContent;
     startNewChat(`【履歴の内容】\n${content.slice(0, 600)}\n\nこの内容について質問があります。`);
+  });
+
+  document.getElementById("hdDelBtn").addEventListener("click", () => {
+    if (!currentDetailItem) return;
+    if (!confirm("この履歴を削除しますか？")) return;
+    historyLog = historyLog.filter(i => i !== currentDetailItem);
+    persistHistory();
+    document.getElementById("historyDetail").classList.add("hd-hidden");
+    renderHistory();
   });
 
   // ---- フォントサイズ ----
@@ -2262,6 +2319,11 @@
   let analyser = null;
   let micStream = null;
   let vizAnimFrame = null;
+
+  // ---- フル録音（音声保存用） ----
+  let fullRecorder = null;
+  let fullRecBlobs = [];
+  let fullRecMime = null;
 
   // ---- マイク設定 ----
   const MIC_KEY = "recote_mic_settings";
@@ -2607,12 +2669,14 @@
   function persistHistory() {
     try {
       const key = "comm_history_" + (currentUserId || "local");
-      localStorage.setItem(key, JSON.stringify(historyLog.slice(0, 200)));
+      // audioUrlはblob URLでページ跨ぎ無効なので除外して保存
+      const toSave = historyLog.slice(0, 200).map(({ audioUrl, ...rest }) => rest);
+      localStorage.setItem(key, JSON.stringify(toSave));
     } catch {}
   }
 
-  function saveToHistory(type, content, topic) {
-    historyLog.unshift({ type, content, topic: topic || "無題", time: new Date(), scene: currentScene });
+  function saveToHistory(type, content, topic, audioUrl) {
+    historyLog.unshift({ type, content, topic: topic || "無題", time: new Date(), scene: currentScene, audioUrl: audioUrl || null });
     persistHistory();
     // 履歴タブが開いていれば即リフレッシュ
     if (document.getElementById("screen-history")?.classList.contains("active")) {
@@ -3041,6 +3105,22 @@
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
         await setupVisualizer();
+        // フル録音開始（音声再生用）
+        fullRecBlobs = [];
+        fullRecorder = null;
+        if (micStream) {
+          const fmime =
+            MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" :
+            MediaRecorder.isTypeSupported("audio/mp4")  ? "audio/mp4"  : null;
+          if (fmime) {
+            try {
+              fullRecMime = fmime;
+              fullRecorder = new MediaRecorder(micStream, { mimeType: fmime });
+              fullRecorder.ondataavailable = e => { if (e.data.size > 0) fullRecBlobs.push(e.data); };
+              fullRecorder.start(1000);
+            } catch(e) { console.warn("フル録音初期化失敗:", e); fullRecorder = null; }
+          }
+        }
         isRecording = true;
         setRecState("recording");
         startTimer();
@@ -3080,15 +3160,33 @@
 
     function finishRecording() {
       isRecording = false;
-      try { recognition.stop(); } catch {}  // 既に停止済みでもエラーにしない
+      try { recognition.stop(); } catch {}
       stopTimer();
+
+      // フル録音を停止してblob URLを生成（teardownVisualizer前）
+      const recTopic = document.getElementById("topicInput").value.trim() || "録音";
+      const capturedTranscript = finalTranscript;
+      if (fullRecorder && fullRecorder.state !== "inactive") {
+        fullRecorder.onstop = () => {
+          let audioUrl = null;
+          if (fullRecBlobs.length > 0) {
+            const blob = new Blob(fullRecBlobs, { type: fullRecMime });
+            audioUrl = URL.createObjectURL(blob);
+          }
+          if (capturedTranscript.trim()) {
+            saveToHistory("transcript", capturedTranscript, recTopic, audioUrl);
+          }
+        };
+        fullRecorder.stop();
+      } else {
+        if (capturedTranscript.trim()) saveToHistory("transcript", capturedTranscript, recTopic, null);
+      }
+
       teardownVisualizer();
-      const remaining = finalTranscript.slice(summarizedLength);
+
+      const remaining = capturedTranscript.slice(summarizedLength);
       if (remaining.trim()) triggerSummarize(remaining);
-      if (finalTranscript.trim()) {
-        // 録音テキストを履歴に保存
-        const recTopic = document.getElementById("topicInput").value.trim() || "録音";
-        saveToHistory("transcript", finalTranscript, recTopic);
+      if (capturedTranscript.trim()) {
         triggerCorrection();
         triggerFinalSummary();
       }
