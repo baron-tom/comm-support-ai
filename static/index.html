@@ -775,6 +775,48 @@
       line-height: 1.8;
     }
 
+    /* ---- 設定トグル ---- */
+    .settings-toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      border-bottom: 1px solid #F0EAE2;
+    }
+    .settings-toggle-item:last-child { border-bottom: none; }
+    .settings-toggle-left { display: flex; align-items: center; gap: 12px; }
+    .settings-toggle-label { font-size: 0.92rem; color: #1c1917; }
+    .settings-toggle-sub { font-size: 0.78rem; color: #a8a29e; margin-top: 2px; }
+    .tog {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .tog input { opacity: 0; width: 0; height: 0; }
+    .tog-slider {
+      position: absolute;
+      inset: 0;
+      background: #D6CFC8;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tog-slider::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .tog input:checked + .tog-slider { background: #0c0a09; }
+    .tog input:checked + .tog-slider::before { transform: translateX(18px); }
+
     /* ---- 設定画面 ---- */
     .profile-section { padding: 20px 20px 40px; }
     .profile-user-card {
@@ -1689,6 +1731,58 @@
       </div>
     </div>
 
+    <!-- 設定グループ：マイク・音声 -->
+    <div class="settings-group">
+      <div class="settings-group-label">マイク・音声</div>
+      <div class="menu-list" style="padding: 0">
+        <div class="settings-toggle-item">
+          <div class="settings-toggle-left">
+            <div class="menu-icon" style="background:#E8F4FD">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" width="16" height="16"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+            <div>
+              <div class="settings-toggle-label">ノイズ抑制</div>
+              <div class="settings-toggle-sub">周囲の雑音を軽減する</div>
+            </div>
+          </div>
+          <label class="tog">
+            <input type="checkbox" id="togNoiseSuppression" checked>
+            <span class="tog-slider"></span>
+          </label>
+        </div>
+        <div class="settings-toggle-item">
+          <div class="settings-toggle-left">
+            <div class="menu-icon" style="background:#F3E8FD">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <div class="settings-toggle-label">自動ゲイン制御</div>
+              <div class="settings-toggle-sub">音量を自動で調整する</div>
+            </div>
+          </div>
+          <label class="tog">
+            <input type="checkbox" id="togAutoGain" checked>
+            <span class="tog-slider"></span>
+          </label>
+        </div>
+        <div class="settings-toggle-item">
+          <div class="settings-toggle-left">
+            <div class="menu-icon" style="background:#FFF3E0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#FF9800" stroke-width="2" width="16" height="16"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+            </div>
+            <div>
+              <div class="settings-toggle-label">エコーキャンセル</div>
+              <div class="settings-toggle-sub">スピーカー音の回り込みを防ぐ</div>
+            </div>
+          </div>
+          <label class="tog">
+            <input type="checkbox" id="togEchoCancellation" checked>
+            <span class="tog-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- 設定グループ：サポート -->
     <div class="settings-group">
       <div class="settings-group-label">サポート</div>
@@ -2158,9 +2252,42 @@
   let micStream = null;
   let vizAnimFrame = null;
 
+  // ---- マイク設定 ----
+  const MIC_KEY = "recote_mic_settings";
+  function loadMicSettings() {
+    try { return JSON.parse(localStorage.getItem(MIC_KEY)) || {}; } catch { return {}; }
+  }
+  function saveMicSettings(settings) {
+    localStorage.setItem(MIC_KEY, JSON.stringify(settings));
+  }
+  function initMicToggles() {
+    const s = loadMicSettings();
+    const ns = document.getElementById("togNoiseSuppression");
+    const ag = document.getElementById("togAutoGain");
+    const ec = document.getElementById("togEchoCancellation");
+    if (!ns) return;
+    ns.checked = s.noiseSuppression !== false;
+    ag.checked = s.autoGainControl !== false;
+    ec.checked = s.echoCancellation !== false;
+    [ns, ag, ec].forEach(el => el.addEventListener("change", () => {
+      saveMicSettings({ noiseSuppression: ns.checked, autoGainControl: ag.checked, echoCancellation: ec.checked });
+    }));
+  }
+  function getMicConstraints() {
+    const s = loadMicSettings();
+    return {
+      audio: {
+        noiseSuppression: s.noiseSuppression !== false,
+        autoGainControl: s.autoGainControl !== false,
+        echoCancellation: s.echoCancellation !== false,
+      },
+      video: false
+    };
+  }
+
   async function setupVisualizer() {
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      micStream = await navigator.mediaDevices.getUserMedia(getMicConstraints());
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 64;
@@ -3282,8 +3409,9 @@
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }
 
-  // 起動時に認証チェック
+  // 起動時に認証チェック・マイク設定初期化
   initAuth();
+  initMicToggles();
 
   window.addEventListener("beforeunload", e => {
     if (isRecording || finalTranscript.trim()) {
