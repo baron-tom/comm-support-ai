@@ -1490,7 +1490,7 @@
         <div class="ai-summary-header">
           <span class="ai-summary-label">✦ AI要約</span>
           <div style="display:flex;gap:6px;align-items:center">
-            <button class="all-dl-btn" id="allDownloadBtn">↓ すべてDL</button>
+            <button class="all-dl-btn" id="allDownloadBtn" style="display:none">↓ すべてDL</button>
             <button class="regen-btn" id="regenBtn" disabled>再生成 ↺</button>
           </div>
         </div>
@@ -3105,6 +3105,7 @@
     // NAV FAB → 録音開始/停止
     document.getElementById("navRecBtn").addEventListener("click", async () => {
       if (!SR) return; // SRコンストラクタで判定
+      if (recState === "stopping") return; // teardown中は何もしない
       if (recState === "idle") {
         // ホームに遷移してから録音開始
         document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
@@ -3128,6 +3129,11 @@
         document.getElementById("allDownloadBtn").style.display = "none";
         document.getElementById("showMoreSummaries").style.display = "none";
         document.getElementById("regenBtn").disabled = true;
+        // 統計カードをリセット
+        ["decisionCount", "todoCount", "confirmCount"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = '0<small>件</small>';
+        });
 
         // ① ビジュアライザ + getUserMedia（音声設定を確立してからSRを起動）
         //   getUserMedia で noiseSuppression:false/autoGainControl:true を設定し、
@@ -3187,20 +3193,62 @@
     });
 
     function finishRecording() {
+      if (recState === "stopping") return; // 二重実行防止
+      recState = "stopping"; // UIはrecording表示のまま、ボタンだけ無効化
+
       isRecording = false;
       recognitionRunning = false;
-      // ハンドラを無効化してから停止（onend の自動再起動を確実に防ぐ）
+      // SRのハンドラを無効化してから停止（onendの自動再起動を防ぐ）
       if (recognition && !recognition._dummy) {
         try { recognition.onend = null; recognition.onerror = null; } catch {}
         try { recognition.abort(); } catch {}
       }
       stopTimer();
 
-      // フル録音を停止してblob URLを生成（teardownVisualizer前）
+      // ① Whisperチャンクを先に停止（micStream停止前に処理させる）
+      if (chunkInterval) { clearInterval(chunkInterval); chunkInterval = null; }
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        mediaRecorder = null;
+      }
+
       const recTopic = document.getElementById("topicInput").value.trim() || "録音";
       const capturedTranscript = finalTranscript;
+
+      // ② フル録音停止後の後処理（teardownVisualizerはここで初めて呼ぶ）
+      let afterStopCalled = false;
+      function doAfterRecStop() {
+        if (afterStopCalled) return; // タイムアウトと正常終了の競合を防ぐ
+        afterStopCalled = true;
+        teardownVisualizer();
+        const remaining = capturedTranscript.slice(summarizedLength);
+        if (remaining.trim()) triggerSummarize(remaining);
+        if (capturedTranscript.trim()) {
+          triggerCorrection();
+          triggerFinalSummary();
+        }
+        setRecState("idle");
+        document.getElementById("navRecBtn").classList.remove("recording");
+        setFabState(false);
+      }
+
       if (fullRecorder && fullRecorder.state !== "inactive") {
+        // onstopが発火しない場合の安全弁（2秒タイムアウト）
+        const fallbackTimer = setTimeout(() => {
+          console.warn("fullRecorder.onstop タイムアウト → 強制teardown");
+          doAfterRecStop();
+        }, 2000);
+
+        fullRecorder.onerror = () => {
+          clearTimeout(fallbackTimer);
+          // エラー時も audioUrl なしで履歴保存
+          if (capturedTranscript.trim()) {
+            saveToHistory("transcript", capturedTranscript, recTopic, null);
+          }
+          doAfterRecStop();
+        };
         fullRecorder.onstop = () => {
+          clearTimeout(fallbackTimer);
           let audioUrl = null;
           if (fullRecBlobs.length > 0) {
             const blob = new Blob(fullRecBlobs, { type: fullRecMime });
@@ -3209,29 +3257,13 @@
           if (capturedTranscript.trim()) {
             saveToHistory("transcript", capturedTranscript, recTopic, audioUrl);
           }
+          doAfterRecStop();
         };
         fullRecorder.stop();
       } else {
+        // fullRecorderがない場合は即座に後処理
         if (capturedTranscript.trim()) saveToHistory("transcript", capturedTranscript, recTopic, null);
-      }
-
-      teardownVisualizer();
-
-      const remaining = capturedTranscript.slice(summarizedLength);
-      if (remaining.trim()) triggerSummarize(remaining);
-      if (capturedTranscript.trim()) {
-        triggerCorrection();
-        triggerFinalSummary();
-      }
-      setRecState("idle");
-      document.getElementById("navRecBtn").classList.remove("recording");
-      setFabState(false);
-
-      // PRO/PREMIUM: 最後のチャンクを送信して終了
-      if (chunkInterval) { clearInterval(chunkInterval); chunkInterval = null; }
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-        mediaRecorder = null;
+        doAfterRecStop();
       }
     }
 
@@ -3295,16 +3327,19 @@
       const ic = iconSets[i % iconSets.length];
       const el = document.createElement("div");
       el.className = "recent-chat-item";
+      // XSS対策: SVG等の定数はinnerHTML、ユーザーデータはtextContentで設定
       el.innerHTML = `
         <div class="recent-chat-icon" style="background:${ic.bg};color:${ic.color}">${ic.svg}</div>
         <div class="recent-chat-body">
-          <div class="recent-chat-title">${s.title}</div>
-          <div class="recent-chat-preview">${s.preview || "（内容なし）"}</div>
+          <div class="recent-chat-title"></div>
+          <div class="recent-chat-preview"></div>
         </div>
         <div class="recent-chat-meta">
           <span>${formatRelTime(s.updatedAt)}</span>
           <span>${s.pinned ? pinFilled : pinOutline}</span>
         </div>`;
+      el.querySelector(".recent-chat-title").textContent = s.title;
+      el.querySelector(".recent-chat-preview").textContent = s.preview || "（内容なし）";
       el.addEventListener("click", () => openChatSession(s.id));
       list.appendChild(el);
     });
@@ -3362,16 +3397,19 @@
       const el = document.createElement("div");
       el.className = "recent-chat-item";
       el.style.cssText = "padding:12px 20px;border-top:1px solid #F0E8DE";
+      // XSS対策: SVG等の定数はinnerHTML、ユーザーデータはtextContentで設定
       el.innerHTML = `
         <div class="recent-chat-icon" style="background:${ic.bg};color:${ic.color}">${ic.svg}</div>
         <div class="recent-chat-body">
-          <div class="recent-chat-title">${s.title}</div>
-          <div class="recent-chat-preview">${s.preview || "（内容なし）"}</div>
+          <div class="recent-chat-title"></div>
+          <div class="recent-chat-preview"></div>
         </div>
         <div class="recent-chat-meta">
           <span>${formatRelTime(s.updatedAt)}</span>
           <span>${s.pinned ? pinFilled : pinOutline}</span>
         </div>`;
+      el.querySelector(".recent-chat-title").textContent = s.title;
+      el.querySelector(".recent-chat-preview").textContent = s.preview || "（内容なし）";
       el.addEventListener("click", () => openChatSession(s.id));
       list.appendChild(el);
     });
