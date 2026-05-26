@@ -2339,9 +2339,9 @@
     const ag = document.getElementById("togAutoGain");
     const ec = document.getElementById("togEchoCancellation");
     if (!ns) return;
-    ns.checked = s.noiseSuppression !== false;
-    ag.checked = s.autoGainControl !== false;
-    ec.checked = s.echoCancellation !== false;
+    ns.checked = s.noiseSuppression === true;   // デフォルトOFF（小さい声を雑音と誤検知しない）
+    ag.checked = s.autoGainControl !== false;   // デフォルトON
+    ec.checked = s.echoCancellation !== false;  // デフォルトON
     [ns, ag, ec].forEach(el => el.addEventListener("change", () => {
       saveMicSettings({ noiseSuppression: ns.checked, autoGainControl: ag.checked, echoCancellation: ec.checked });
     }));
@@ -2350,9 +2350,9 @@
     const s = loadMicSettings();
     return {
       audio: {
-        noiseSuppression: s.noiseSuppression !== false,
-        autoGainControl: s.autoGainControl !== false,
-        echoCancellation: s.echoCancellation !== false,
+        noiseSuppression: s.noiseSuppression === true,  // デフォルトOFF：ノイズ抑制が小声を除去してしまうため
+        autoGainControl: s.autoGainControl !== false,   // デフォルトON：自動ゲイン調整で小声を増幅
+        echoCancellation: s.echoCancellation !== false, // デフォルトON
       },
       video: false
     };
@@ -3123,18 +3123,9 @@
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
 
-        // ① SpeechRecognition を最初に起動してiOSオーディオセッションを確保
-        //   （MediaRecorder より先に起動することで競合を防ぐ）
-        makeRecognition();
-        recognitionRunning = true;
-        try {
-          recognition.start();
-        } catch (e) {
-          recognitionRunning = false;
-          console.warn("recognition.start初回失敗:", e);
-        }
-
-        // ② ビジュアライザ + フル録音（micStream取得後）
+        // ① ビジュアライザ + getUserMedia（音声設定を確立してからSRを起動）
+        //   getUserMedia で noiseSuppression:false/autoGainControl:true を設定し、
+        //   後から起動するSRがこの音声セッションを引き継ぐことで小声も拾いやすくなる
         await setupVisualizer();
         fullRecBlobs = [];
         fullRecorder = null;
@@ -3157,24 +3148,23 @@
         startTimer();
         requestAnimationFrame(startVisualizer);
 
-        // ③ SR が起動できていなければリトライ
-        if (!recognitionRunning) {
-          recognitionRunning = true;
-          try {
-            recognition.start();
-          } catch (e2) {
-            recognitionRunning = false;
-            console.warn("recognition.startリトライ失敗:", e2);
-            setTimeout(() => {
-              if (isRecording && !recognitionRunning) {
-                recognitionRunning = true;
-                try { recognition.start(); } catch(e3) { recognitionRunning = false; console.error("recognition起動不可:", e3); }
-              }
-            }, 500);
-          }
+        // ② SpeechRecognition 起動（getUserMedia後に起動してオーディオセッションを共有）
+        makeRecognition();
+        recognitionRunning = true;
+        try {
+          recognition.start();
+        } catch (e) {
+          recognitionRunning = false;
+          console.warn("recognition.start失敗、500ms後にリトライ:", e);
+          setTimeout(() => {
+            if (isRecording && !recognitionRunning) {
+              recognitionRunning = true;
+              try { recognition.start(); } catch(e2) { recognitionRunning = false; console.error("recognition再起動失敗:", e2); }
+            }
+          }, 500);
         }
 
-        // ④ PRO/PREMIUM: 15秒チャンクでGroq Whisper
+        // ③ PRO/PREMIUM: 15秒チャンクでGroq Whisper
         if (userPlan !== "free" && micStream) {
           try {
             whisperTranscript = "";
