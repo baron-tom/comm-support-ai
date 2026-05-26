@@ -3000,10 +3000,7 @@
   // ---- 音声認識（録音タブ） ----
   if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SR();
-    recognition.lang = "ja-JP";
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    let recognitionRunning = false;
 
     function renderTranscriptTimeline(interim) {
       const box = document.getElementById("liveBox");
@@ -3023,60 +3020,81 @@
       }
     }
 
-    recognition.onresult = e => {
-      let interim = "";
-      for (let i = lastProcessedIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          const elapsed = recStartTime ? Math.floor((Date.now() - recStartTime) / 1000) : 0;
-          const ts = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
-          transcriptEntries.push({ ts, text: e.results[i][0].transcript });
-          finalTranscript += e.results[i][0].transcript;
-          lastProcessedIndex = i + 1;
-        } else {
-          interim = e.results[i][0].transcript;
-        }
+    // 毎回の録音で新インスタンスを作成 → 前回の状態が残らない
+    function makeRecognition() {
+      // 古いインスタンスのハンドラを無効化してから破棄
+      if (recognition) {
+        try { recognition.onresult = null; recognition.onend = null; recognition.onerror = null; } catch {}
+        try { recognition.abort(); } catch {}
       }
-      renderTranscriptTimeline(interim);
+      const r = new SR();
+      r.lang = currentLang.sr || "ja-JP";
+      r.continuous = true;
+      r.interimResults = true;
 
-      const unsummarized = finalTranscript.slice(summarizedLength);
-      const periodCount = (unsummarized.match(/[。．.!?！？]/g) || []).length;
-      if (periodCount >= 4 || unsummarized.length >= 300) {
-        summarizedLength += unsummarized.length;
-        triggerSummarize(unsummarized);
-      }
-    };
-
-    let recognitionRunning = false;
-
-    recognition.onend = () => {
-      recognitionRunning = false;
-      if (isRecording) {
-        lastProcessedIndex = 0;
-        recognitionRunning = true;
-        try {
-          recognition.start();
-        } catch (e) {
-          recognitionRunning = false;
-          setTimeout(() => {
-            if (isRecording && !recognitionRunning) {
-              recognitionRunning = true;
-              try { recognition.start(); } catch {}
-            }
-          }, 300);
-        }
-      }
-    };
-    recognition.onerror = () => {
-      recognitionRunning = false;
-      if (isRecording) {
-        setTimeout(() => {
-          if (isRecording && !recognitionRunning) {
-            recognitionRunning = true;
-            try { recognition.start(); } catch {}
+      r.onresult = e => {
+        let interim = "";
+        for (let i = lastProcessedIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) {
+            const elapsed = recStartTime ? Math.floor((Date.now() - recStartTime) / 1000) : 0;
+            const ts = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
+            transcriptEntries.push({ ts, text: e.results[i][0].transcript });
+            finalTranscript += e.results[i][0].transcript;
+            lastProcessedIndex = i + 1;
+          } else {
+            interim = e.results[i][0].transcript;
           }
-        }, 1000);
-      }
-    };
+        }
+        renderTranscriptTimeline(interim);
+        const unsummarized = finalTranscript.slice(summarizedLength);
+        const periodCount = (unsummarized.match(/[。．.!?！？]/g) || []).length;
+        if (periodCount >= 4 || unsummarized.length >= 300) {
+          summarizedLength += unsummarized.length;
+          triggerSummarize(unsummarized);
+        }
+      };
+
+      r.onend = () => {
+        if (recognition !== r) return; // 古いインスタンスのイベントは無視
+        recognitionRunning = false;
+        if (isRecording) {
+          lastProcessedIndex = 0;
+          recognitionRunning = true;
+          try {
+            r.start();
+          } catch (e) {
+            recognitionRunning = false;
+            setTimeout(() => {
+              if (isRecording && recognition === r && !recognitionRunning) {
+                recognitionRunning = true;
+                try { r.start(); } catch {}
+              }
+            }, 500);
+          }
+        }
+      };
+
+      r.onerror = (e) => {
+        if (recognition !== r) return; // 古いインスタンスのイベントは無視
+        recognitionRunning = false;
+        console.warn("SpeechRecognition error:", e.error);
+        // not-allowed は再試行しない
+        if (isRecording && e.error !== "not-allowed" && e.error !== "service-not-allowed") {
+          setTimeout(() => {
+            if (isRecording && recognition === r && !recognitionRunning) {
+              recognitionRunning = true;
+              try { r.start(); } catch {}
+            }
+          }, 1000);
+        }
+      };
+
+      recognition = r;
+      return r;
+    }
+
+    // 初期インスタンス（録音ボタン判定用に存在だけ作る）
+    recognition = { _dummy: true };
 
     function setFabState(recording) {
       document.getElementById("fabMicIcon").style.display = recording ? "none" : "";
@@ -3086,7 +3104,7 @@
 
     // NAV FAB → 録音開始/停止
     document.getElementById("navRecBtn").addEventListener("click", async () => {
-      if (!recognition) return;
+      if (!SR) return; // SRコンストラクタで判定
       if (recState === "idle") {
         // ホームに遷移してから録音開始
         document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
@@ -3125,23 +3143,21 @@
         setRecState("recording");
         startTimer();
         requestAnimationFrame(startVisualizer);
-        // recognitionRunning=trueなら onend が発火して自動再起動するので呼ばない
-        if (!recognitionRunning) {
-          recognitionRunning = true;
-          try {
-            recognition.start();
-          } catch (e) {
-            recognitionRunning = false;
-            console.warn("recognition.start失敗、300ms後にリトライ:", e);
-            setTimeout(() => {
-              if (isRecording && !recognitionRunning) {
-                recognitionRunning = true;
-                try { recognition.start(); } catch(e2) { recognitionRunning = false; console.error("recognition再起動失敗:", e2); }
-              }
-            }, 300);
-          }
+        // 毎回新インスタンスを生成して確実にクリーンな状態でstart
+        makeRecognition();
+        recognitionRunning = true;
+        try {
+          recognition.start();
+        } catch (e) {
+          recognitionRunning = false;
+          console.warn("recognition.start失敗、500ms後にリトライ:", e);
+          setTimeout(() => {
+            if (isRecording && !recognitionRunning) {
+              recognitionRunning = true;
+              try { recognition.start(); } catch(e2) { recognitionRunning = false; console.error("recognition再起動失敗:", e2); }
+            }
+          }, 500);
         }
-        // else: 前回のonendが発火したとき isRecording=true なら自動でstartされる
         // PRO/PREMIUM: 15秒チャンクでGroq Whisper
         if (userPlan !== "free" && micStream) {
           try {
@@ -3160,7 +3176,12 @@
 
     function finishRecording() {
       isRecording = false;
-      try { recognition.stop(); } catch {}
+      recognitionRunning = false;
+      // ハンドラを無効化してから停止（onend の自動再起動を確実に防ぐ）
+      if (recognition && !recognition._dummy) {
+        try { recognition.onend = null; recognition.onerror = null; } catch {}
+        try { recognition.abort(); } catch {}
+      }
       stopTimer();
 
       // フル録音を停止してblob URLを生成（teardownVisualizer前）
