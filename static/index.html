@@ -950,6 +950,19 @@
     }
     .upgrade-submit-btn:disabled { opacity: 0.4; cursor: default; }
     .upgrade-student-note { font-size: 0.75rem; color: #a8a29e; text-align: center; margin-top: 10px; }
+    .upgrade-savings-badge {
+      font-size: 0.62rem; font-weight: 700; color: #647D58;
+      background: #E2EDD9; border-radius: 9999px; padding: 1px 7px; margin-left: 4px;
+      vertical-align: middle;
+    }
+    .upgrade-price-hint { font-size: 0.75rem; color: #a8a29e; text-align: right; margin-top: 2px; }
+    .upgrade-hook {
+      font-size: 0.82rem; color: #78716c; text-align: center;
+      margin-top: -6px; margin-bottom: 16px; line-height: 1.5;
+      background: #F5F0EA; border-radius: 10px; padding: 10px 14px;
+    }
+    .upgrade-plan-features { font-size: 0.8rem; color: #78716c; margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+    .upgrade-plan-features span::before { content: "✓ "; color: #647D58; font-weight: 700; }
 
     .font-modal-backdrop {
       position: fixed; inset: 0; background: rgba(0,0,0,0.3);
@@ -1356,25 +1369,39 @@
     <div class="upgrade-modal-sub">いつでもキャンセル可能です</div>
     <div class="upgrade-interval-row">
       <button class="interval-btn active" data-interval="monthly">月払い</button>
-      <button class="interval-btn" data-interval="yearly">年払い</button>
+      <button class="interval-btn" data-interval="yearly">年払い <span class="upgrade-savings-badge">2ヶ月お得</span></button>
       <button class="interval-btn" data-interval="student" id="studentIntervalBtn" style="display:none">学生（年払い）</button>
     </div>
     <div class="upgrade-plan-cards">
       <div class="upgrade-plan-card selected" data-plan="pro">
         <div class="upgrade-plan-card-top">
           <div class="upgrade-plan-name">PRO</div>
-          <div class="upgrade-plan-price" id="proPriceLabel">¥1,480<small>/月</small></div>
+          <div>
+            <div class="upgrade-plan-price" id="proPriceLabel">¥600<small>/月</small></div>
+            <div class="upgrade-price-hint" id="proPriceHint">1日たった¥20</div>
+          </div>
         </div>
-        <div class="upgrade-plan-features">月20時間 文字起こし・AI要約 Gemini Flash・AIチャット無制限</div>
+        <div class="upgrade-plan-features">
+          <span>月20時間の録音・文字起こし</span>
+          <span>AI自動要約</span>
+          <span>AIチャット無制限</span>
+        </div>
       </div>
       <div class="upgrade-plan-card" data-plan="premium">
         <div class="upgrade-plan-card-top">
           <div class="upgrade-plan-name">PREMIUM</div>
-          <div class="upgrade-plan-price" id="premiumPriceLabel">¥2,480<small>/月</small></div>
+          <div>
+            <div class="upgrade-plan-price" id="premiumPriceLabel">¥1,980<small>/月</small></div>
+            <div class="upgrade-price-hint" id="premiumPriceHint">月50時間まで利用可</div>
+          </div>
         </div>
-        <div class="upgrade-plan-features">月50時間 文字起こし・全機能利用可能</div>
+        <div class="upgrade-plan-features">
+          <span>月50時間の録音・文字起こし</span>
+          <span>AI自動要約・全機能利用可能</span>
+        </div>
       </div>
     </div>
+    <div class="upgrade-hook" id="upgradeHook">☕ スタバ1杯分で、今月の授業が全部テキストになる</div>
     <button class="upgrade-submit-btn" id="upgradeSubmitBtn">今すぐ始める</button>
     <div class="upgrade-student-note" id="studentNote" style="display:none">学生割引は .ac.jp メールアドレスのみ適用されます</div>
   </div>
@@ -3589,11 +3616,25 @@
   }
 
   function renderUpgradePrices() {
-    const suffix = upgradeSelectedInterval === "monthly" ? "/月" : "/月（年払い）";
+    const isYearly = upgradeSelectedInterval === "yearly" || upgradeSelectedInterval === "student";
+    const suffix = isYearly ? "/月（年払い）" : "/月";
     document.getElementById("proPriceLabel").innerHTML =
-      `${PRICES.pro[upgradeSelectedInterval]}<small>${suffix}</small>`;
+      `${PRICES.pro[upgradeSelectedInterval] || PRICES.pro.yearly}<small>${suffix}</small>`;
     document.getElementById("premiumPriceLabel").innerHTML =
-      `${PRICES.premium[upgradeSelectedInterval]}<small>${suffix}</small>`;
+      `${PRICES.premium[upgradeSelectedInterval] || PRICES.premium.yearly}<small>${suffix}</small>`;
+
+    // 日割り・年払いヒント
+    const proHint = document.getElementById("proPriceHint");
+    if (proHint) proHint.textContent = isYearly ? "¥4,800/年（2ヶ月分タダ）" : "1日たった¥20";
+
+    const premHint = document.getElementById("premiumPriceHint");
+    if (premHint) premHint.textContent = isYearly ? "¥19,200/年（2ヶ月分タダ）" : "月50時間まで利用可";
+
+    // フックコピー
+    const hook = document.getElementById("upgradeHook");
+    if (hook) hook.textContent = isYearly
+      ? "💰 年払いで¥1,200お得。いつでもキャンセル可能です。"
+      : "☕ スタバ1杯分で、今月の授業が全部テキストになる";
   }
 
   document.querySelector(".plan-upgrade-btn")?.addEventListener("click", openUpgradeModal);

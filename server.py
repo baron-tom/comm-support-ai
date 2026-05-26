@@ -61,7 +61,7 @@ if STRIPE_SECRET_KEY:
 
 # ---- プラン制限 ----
 PLAN_LIMITS = {
-    "free":    {"transcription_seconds": 3_600,   "chat_daily": 5,    "history_days": 7},
+    "free":    {"transcription_seconds": 10_800,  "chat_daily": 10,   "history_days": 7},
     "pro":     {"transcription_seconds": 72_000,  "chat_daily": None, "history_days": None},
     "premium": {"transcription_seconds": 180_000, "chat_daily": None, "history_days": None},
 }
