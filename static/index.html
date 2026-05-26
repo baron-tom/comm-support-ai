@@ -3568,18 +3568,13 @@
       if (upgradeBtn)   upgradeBtn.style.display   = "none";
     }
 
-    // 学生メール判定（モーダルで学生タブを表示）
-    const email = document.getElementById("profileEmail")?.textContent || "";
-    if (email.endsWith(".ac.jp")) {
-      document.getElementById("studentIntervalBtn").style.display = "";
-      document.getElementById("studentNote").style.display = "";
-    }
+    // 学割は現在非提供
   }
 
   // ---- アップグレードモーダル ----
   const PRICES = {
-    pro:     { monthly: "¥500", yearly: "¥350", student: "¥250" },
-    premium: { monthly: "¥1,980", yearly: "¥1,600", student: "¥980" },
+    pro:     { monthly: "¥500", yearly: "¥350" },
+    premium: { monthly: "¥1,980", yearly: "¥1,600" },
   };
 
   let upgradeSelectedPlan     = "pro";

@@ -52,10 +52,8 @@ APP_URL               = os.environ.get("APP_URL", "http://localhost:8000")
 STRIPE_PRICES = {
     "pro_monthly":     os.environ.get("STRIPE_PRICE_PRO_MONTHLY", ""),
     "pro_yearly":      os.environ.get("STRIPE_PRICE_PRO_YEARLY", ""),
-    "pro_student":     os.environ.get("STRIPE_PRICE_PRO_STUDENT", ""),
     "premium_monthly": os.environ.get("STRIPE_PRICE_PREMIUM_MONTHLY", ""),
     "premium_yearly":  os.environ.get("STRIPE_PRICE_PREMIUM_YEARLY", ""),
-    "premium_student": os.environ.get("STRIPE_PRICE_PREMIUM_STUDENT", ""),
 }
 
 if STRIPE_SECRET_KEY:
@@ -806,8 +804,8 @@ def create_checkout(req: CheckoutRequest, user=Depends(get_current_user)):
     user_id = user.get("sub", "dev")
     email   = user.get("email", "")
 
-    if req.interval == "student" and not email.endswith(".ac.jp"):
-        raise HTTPException(status_code=400, detail="学生割引は .ac.jp メールアドレスが必要です")
+    if req.interval not in ("monthly", "yearly"):
+        raise HTTPException(status_code=400, detail="無効な支払い間隔です")
 
     price_key = f"{req.plan}_{req.interval}"
     price_id  = STRIPE_PRICES.get(price_key)
