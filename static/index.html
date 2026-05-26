@@ -2112,6 +2112,9 @@
       } else if (event === "SIGNED_OUT") {
         currentToken = null;
         currentUserId = null;
+        historyLog = [];
+        chatSessions = [];
+        lastHistoryUserId = null;
         showAuth();
       }
     });
