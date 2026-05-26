@@ -3022,10 +3022,10 @@
 
     // 毎回の録音で新インスタンスを作成 → 前回の状態が残らない
     function makeRecognition() {
-      // 古いインスタンスのハンドラを無効化してから破棄
-      if (recognition) {
+      // 古いインスタンスのハンドラを無効化のみ（abort は finishRecording で処理済み）
+      if (recognition && !recognition._dummy) {
         try { recognition.onresult = null; recognition.onend = null; recognition.onerror = null; } catch {}
-        try { recognition.abort(); } catch {}
+        // abort() はここでは呼ばない → 二重abort によるiOSオーディオセッション破綻を防ぐ
       }
       const r = new SR();
       r.lang = currentLang.sr || "ja-JP";
@@ -3122,8 +3122,20 @@
         recStartTime = Date.now();
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
+
+        // ① SpeechRecognition を最初に起動してiOSオーディオセッションを確保
+        //   （MediaRecorder より先に起動することで競合を防ぐ）
+        makeRecognition();
+        recognitionRunning = true;
+        try {
+          recognition.start();
+        } catch (e) {
+          recognitionRunning = false;
+          console.warn("recognition.start初回失敗:", e);
+        }
+
+        // ② ビジュアライザ + フル録音（micStream取得後）
         await setupVisualizer();
-        // フル録音開始（音声再生用）
         fullRecBlobs = [];
         fullRecorder = null;
         if (micStream) {
@@ -3139,26 +3151,30 @@
             } catch(e) { console.warn("フル録音初期化失敗:", e); fullRecorder = null; }
           }
         }
+
         isRecording = true;
         setRecState("recording");
         startTimer();
         requestAnimationFrame(startVisualizer);
-        // 毎回新インスタンスを生成して確実にクリーンな状態でstart
-        makeRecognition();
-        recognitionRunning = true;
-        try {
-          recognition.start();
-        } catch (e) {
-          recognitionRunning = false;
-          console.warn("recognition.start失敗、500ms後にリトライ:", e);
-          setTimeout(() => {
-            if (isRecording && !recognitionRunning) {
-              recognitionRunning = true;
-              try { recognition.start(); } catch(e2) { recognitionRunning = false; console.error("recognition再起動失敗:", e2); }
-            }
-          }, 500);
+
+        // ③ SR が起動できていなければリトライ
+        if (!recognitionRunning) {
+          recognitionRunning = true;
+          try {
+            recognition.start();
+          } catch (e2) {
+            recognitionRunning = false;
+            console.warn("recognition.startリトライ失敗:", e2);
+            setTimeout(() => {
+              if (isRecording && !recognitionRunning) {
+                recognitionRunning = true;
+                try { recognition.start(); } catch(e3) { recognitionRunning = false; console.error("recognition起動不可:", e3); }
+              }
+            }, 500);
+          }
         }
-        // PRO/PREMIUM: 15秒チャンクでGroq Whisper
+
+        // ④ PRO/PREMIUM: 15秒チャンクでGroq Whisper
         if (userPlan !== "free" && micStream) {
           try {
             whisperTranscript = "";
