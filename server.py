@@ -491,6 +491,9 @@ def get_config():
         "supabase_url": SUPABASE_URL,
         "supabase_anon_key": SUPABASE_ANON_KEY,
         "auth_enabled": bool(SUPABASE_JWT_SECRET),
+        "groq_enabled": bool(GROQ_API_KEY),
+        "stripe_enabled": bool(STRIPE_SECRET_KEY),
+        "gemini_enabled": bool(GEMINI_API_KEY),
     }
 
 
