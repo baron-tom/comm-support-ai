@@ -3122,6 +3122,12 @@
         recStartTime = Date.now();
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
+        // 要約エリアをリセット（前回の要約が残らないように）
+        document.getElementById("summariesList").innerHTML = "";
+        document.getElementById("summaryPlaceholder").style.display = "";
+        document.getElementById("allDownloadBtn").style.display = "none";
+        document.getElementById("showMoreSummaries").style.display = "none";
+        document.getElementById("regenBtn").disabled = true;
 
         // ① ビジュアライザ + getUserMedia（音声設定を確立してからSRを起動）
         //   getUserMedia で noiseSuppression:false/autoGainControl:true を設定し、
