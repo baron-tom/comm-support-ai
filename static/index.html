@@ -2389,21 +2389,31 @@
   }
 
   async function setupVisualizer() {
+    // 前回の残骸を確実にクリア（再録音時の再取得エラー防止）
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+    if (audioCtx)  { try { audioCtx.close(); } catch {} audioCtx = null; analyser = null; }
+
     try {
-      // まず制約付きで試す、失敗したらシンプルなaudio: trueで再試行
+      // まず制約付きで試す
       try {
         micStream = await navigator.mediaDevices.getUserMedia(getMicConstraints());
       } catch (e) {
         console.warn("マイク制約付き取得失敗、シンプルモードで再試行:", e);
+        // iOS は直後の再取得で AbortError が出ることがあるため少し待つ
+        await new Promise(r => setTimeout(r, 300));
         micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       }
-      if (audioCtx) { try { audioCtx.close(); } catch {} }
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // iOS Safari: AudioContext が suspended 状態で生成されることがある
+      if (audioCtx.state === "suspended") await audioCtx.resume();
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 64;
       audioCtx.createMediaStreamSource(micStream).connect(analyser);
     } catch (e) {
-      console.warn("ビジュアライザー初期化失敗:", e);
+      console.error("ビジュアライザー初期化失敗:", e);
+      micStream = null;
+      if (audioCtx) { try { audioCtx.close(); } catch {} audioCtx = null; }
+      analyser = null;
     }
   }
 
@@ -3169,6 +3179,14 @@
         //   getUserMedia で noiseSuppression:false/autoGainControl:true を設定し、
         //   後から起動するSRがこの音声セッションを引き継ぐことで小声も拾いやすくなる
         await setupVisualizer();
+
+        // マイク取得失敗時は録音を中断
+        if (!micStream) {
+          setRecState("idle");
+          alert("マイクへのアクセスに失敗しました。\nブラウザのマイク許可を確認してから再度お試しください。");
+          return;
+        }
+
         fullRecBlobs = [];
         fullRecorder = null;
         if (micStream) {
