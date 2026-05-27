@@ -526,15 +526,9 @@ async def transcribe(
     prompt: str = Form(default=""),
     user=Depends(get_current_user),
 ):
-    """Groq Whisper による高精度文字起こし（PRO/PREMIUM のみ）"""
+    """Groq Whisper による高精度文字起こし（全プラン、月間上限内）"""
     user_id = user.get("sub", "dev")
     plan = get_user_plan(user_id)
-
-    if plan == "free":
-        raise HTTPException(
-            status_code=403,
-            detail="Groq Whisper の利用には PRO 以上のプランが必要です",
-        )
 
     year_month = datetime.utcnow().strftime("%Y-%m")
     lim = PLAN_LIMITS[plan]["transcription_seconds"]

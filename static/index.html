@@ -1401,7 +1401,7 @@
         </div>
       </div>
     </div>
-    <div class="upgrade-hook" id="upgradeHook">☕ スタバ1杯分で、今月の授業が全部テキストになる</div>
+    <div class="upgrade-hook" id="upgradeHook"></div>
     <button class="upgrade-submit-btn" id="upgradeSubmitBtn">今すぐ始める</button>
     <div class="upgrade-student-note" id="studentNote" style="display:none">学生割引は .ac.jp メールアドレスのみ適用されます</div>
   </div>
@@ -3099,18 +3099,13 @@
         recognitionRunning = false;
         if (isRecording) {
           lastProcessedIndex = 0;
-          recognitionRunning = true;
-          try {
-            r.start();
-          } catch (e) {
-            recognitionRunning = false;
-            setTimeout(() => {
-              if (isRecording && recognition === r && !recognitionRunning) {
-                recognitionRunning = true;
-                try { r.start(); } catch {}
-              }
-            }, 500);
-          }
+          setTimeout(() => {
+            if (isRecording && !recognitionRunning) {
+              const nr = makeRecognition();
+              recognitionRunning = true;
+              try { nr.start(); } catch { recognitionRunning = false; }
+            }
+          }, 200);
         }
       };
 
@@ -3121,9 +3116,10 @@
         // not-allowed は再試行しない
         if (isRecording && e.error !== "not-allowed" && e.error !== "service-not-allowed") {
           setTimeout(() => {
-            if (isRecording && recognition === r && !recognitionRunning) {
+            if (isRecording && !recognitionRunning) {
+              const nr = makeRecognition();
               recognitionRunning = true;
-              try { r.start(); } catch {}
+              try { nr.start(); } catch { recognitionRunning = false; }
             }
           }, 1000);
         }
@@ -3225,7 +3221,7 @@
         }
 
         // ③ PRO/PREMIUM: 15秒チャンクでGroq Whisper
-        if (userPlan !== "free" && micStream) {
+        if (micStream) {
           try {
             whisperTranscript = "";
             whisperPrompt = "";
@@ -3650,9 +3646,7 @@
 
     // フックコピー
     const hook = document.getElementById("upgradeHook");
-    if (hook) hook.textContent = isYearly
-      ? "💰 年払いで¥1,200お得。いつでもキャンセル可能です。"
-      : "☕ スタバ1杯分で、今月の授業が全部テキストになる";
+    if (hook) hook.textContent = "";
   }
 
   document.querySelector(".plan-upgrade-btn")?.addEventListener("click", openUpgradeModal);
