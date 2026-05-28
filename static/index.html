@@ -2344,6 +2344,7 @@
   let recStartTime = null;
   let transcriptEntries = [];
   let recSessionId = 0;            // 録音セッションID（要約の競合防止）
+  let currentSessionId = 0;        // 現在の録音セッションID
   let lastWhisperChunkPromise = Promise.resolve(); // 最後のWhisperチャンク完了待ち
 
   // ---- ビジュアライザー ----
@@ -3175,7 +3176,7 @@
         whisperPrompt = "";
         lastWhisperChunkPromise = Promise.resolve();
         recStartTime = Date.now();
-        const currentSessionId = ++recSessionId;
+        currentSessionId = ++recSessionId;
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
         // 要約エリアをリセット（前回の要約が残らないように）
