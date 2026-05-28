@@ -2885,7 +2885,7 @@
       card.querySelector(".summary-card-text").textContent = data.summary;
       card.querySelector("textarea").value = data.summary;
       card.querySelector(".summary-card-text").style.opacity = "1";
-      saveToHistory("summary", data.summary, topic || "録音");
+      // 中間要約は履歴保存しない（全体まとめのみ保存）
     } catch {
       card.querySelector(".summary-card-text").textContent = "エラーが発生しました。再試行してください。";
     }
