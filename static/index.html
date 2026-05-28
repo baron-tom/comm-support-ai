@@ -706,10 +706,25 @@
       font-size: 0.8rem; color: #d6d3d1; text-align: center; padding: 6px 0;
     }
     .hd-content {
-      font-size: 0.92rem; color: #292524; line-height: 1.85;
+      font-size: 0.92rem; color: #292524; line-height: 1.7;
       white-space: pre-wrap; background: #FDFAF6;
-      border: 1px solid #E8DDD2; border-radius: 16px; padding: 18px;
-      margin-bottom: 20px;
+      border: 1px solid #E8DDD2; border-radius: 16px; padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    /* 要約用：Markdownレンダリング */
+    .hd-summary-rendered { font-size: 0.92rem; color: #292524; line-height: 1.65; }
+    .hd-summary-rendered h2, .hd-summary-rendered h3 {
+      font-size: 0.88rem; font-weight: 700; color: #3d3530;
+      margin: 12px 0 4px; letter-spacing: 0.02em;
+    }
+    .hd-summary-rendered h2:first-child, .hd-summary-rendered h3:first-child { margin-top: 0; }
+    .hd-summary-rendered ul { margin: 2px 0 8px; padding-left: 1.2em; }
+    .hd-summary-rendered li { margin-bottom: 3px; }
+    .hd-summary-rendered p { margin: 0 0 6px; }
+    .hd-summary-rendered strong { font-weight: 600; color: #1A1512; }
+    .hd-section-label {
+      font-size: 0.75rem; font-weight: 700; color: #a8a29e;
+      letter-spacing: 0.08em; text-transform: uppercase; margin: 16px 0 8px;
     }
     .hd-ask-btn {
       width: 100%; padding: 14px; border: none; border-radius: 14px;
@@ -1912,7 +1927,7 @@
     <div id="hdContent" class="hd-content"></div>
     <div id="hdSummaryWrap" style="display:none">
       <div class="hd-section-label">📋 全体まとめ</div>
-      <div id="hdSummary" class="hd-content" style="margin-top:0;background:#f0ebe3;border-radius:12px;padding:14px 16px;font-size:0.92rem"></div>
+      <div id="hdSummary" style="background:#f0ebe3;border-radius:12px;padding:14px 16px;white-space:normal"></div>
     </div>
     <button id="hdAskBtn" class="hd-ask-btn">💬 チャットで質問する</button>
     <button id="hdDelBtn" class="hd-del-btn">🗑 この履歴を削除</button>
@@ -2203,6 +2218,53 @@
 
   let currentDetailItem = null;
 
+  // 簡易Markdownレンダラー（見出し・箇条書き・太字）
+  function renderMarkdown(text) {
+    const div = document.createElement("div");
+    div.className = "hd-summary-rendered";
+    // 連続する空行を1つに圧縮
+    const lines = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").split("\n");
+    let html = "";
+    let inUl = false;
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) { if (inUl) { html += "</ul>"; inUl = false; } return; }
+      // 見出し
+      if (/^###\s/.test(trimmed)) {
+        if (inUl) { html += "</ul>"; inUl = false; }
+        html += `<h3>${esc(trimmed.replace(/^###\s/, ""))}</h3>`;
+      } else if (/^##\s/.test(trimmed)) {
+        if (inUl) { html += "</ul>"; inUl = false; }
+        html += `<h2>${esc(trimmed.replace(/^##\s/, ""))}</h2>`;
+      // 箇条書き
+      } else if (/^[-・•]\s/.test(trimmed)) {
+        if (!inUl) { html += "<ul>"; inUl = true; }
+        html += `<li>${inlineMd(esc(trimmed.replace(/^[-・•]\s/, "")))}</li>`;
+      // 通常テキスト
+      } else {
+        if (inUl) { html += "</ul>"; inUl = false; }
+        html += `<p>${inlineMd(esc(trimmed))}</p>`;
+      }
+    });
+    if (inUl) html += "</ul>";
+    div.innerHTML = html;
+    return div;
+  }
+  function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function inlineMd(s) { return s.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/`(.+?)`/g,"<code>$1</code>"); }
+
+  function renderSummaryEl(summary) {
+    const wrap = document.getElementById("hdSummaryWrap");
+    const el = document.getElementById("hdSummary");
+    if (summary) {
+      el.innerHTML = "";
+      el.appendChild(renderMarkdown(summary));
+      wrap.style.display = "";
+    } else {
+      wrap.style.display = "none";
+    }
+  }
+
   function openHistoryDetail(item) {
     currentDetailItem = item;
     const badge = document.getElementById("hdSceneBadge");
@@ -2259,14 +2321,7 @@
       </div>`;
 
     document.getElementById("hdContent").textContent = item.content || "";
-    const summaryWrap = document.getElementById("hdSummaryWrap");
-    const summaryEl = document.getElementById("hdSummary");
-    if (item.summary) {
-      summaryEl.textContent = item.summary;
-      summaryWrap.style.display = "";
-    } else {
-      summaryWrap.style.display = "none";
-    }
+    renderSummaryEl(item.summary);
     document.getElementById("historyDetail").classList.remove("hd-hidden");
   }
 
@@ -2901,8 +2956,7 @@
           persistHistory();
           // 詳細画面が開いていてこのエントリを表示中なら即更新
           if (currentDetailItem === transcriptEntry) {
-            document.getElementById("hdSummary").textContent = data.summary;
-            document.getElementById("hdSummaryWrap").style.display = "";
+            renderSummaryEl(data.summary);
           }
         }
         if (currentUserId) {
