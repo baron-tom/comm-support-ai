@@ -1904,6 +1904,10 @@
     </div>
     <div class="stat-cards-row" id="hdStatRow"></div>
     <div id="hdContent" class="hd-content"></div>
+    <div id="hdSummaryWrap" style="display:none">
+      <div class="hd-section-label">📋 全体まとめ</div>
+      <div id="hdSummary" class="hd-content" style="margin-top:0;background:#f0ebe3;border-radius:12px;padding:14px 16px;font-size:0.92rem"></div>
+    </div>
     <button id="hdAskBtn" class="hd-ask-btn">💬 チャットで質問する</button>
     <button id="hdDelBtn" class="hd-del-btn">🗑 この履歴を削除</button>
   </div>
@@ -2249,6 +2253,14 @@
       </div>`;
 
     document.getElementById("hdContent").textContent = item.content || "";
+    const summaryWrap = document.getElementById("hdSummaryWrap");
+    const summaryEl = document.getElementById("hdSummary");
+    if (item.summary) {
+      summaryEl.textContent = item.summary;
+      summaryWrap.style.display = "";
+    } else {
+      summaryWrap.style.display = "none";
+    }
     document.getElementById("historyDetail").classList.remove("hd-hidden");
   }
 
@@ -2736,6 +2748,7 @@
     list.innerHTML = "";
     let lastDate = "";
     historyLog.forEach(item => {
+      if (item.type === "summary") return; // transcriptエントリに統合済み
       const dateStr = item.time.toLocaleDateString("ja-JP");
       if (dateStr !== lastDate) {
         const d = document.createElement("div");
@@ -2792,7 +2805,7 @@
   }
 
   // ---- 全体まとめ ----
-  async function triggerFinalSummary(text, sessionId) {
+  async function triggerFinalSummary(text, sessionId, transcriptEntry) {
     const t = text || finalTranscript;
     if (!t.trim()) return;
     const topic = document.getElementById("topicInput").value.trim();
@@ -2817,7 +2830,8 @@
       card.querySelector("textarea").value = data.summary;
       card.querySelector(".summary-card-text").style.opacity = "1";
       if (data.summary) {
-        saveToHistory("summary", data.summary, (topic || "録音") + " 全体まとめ");
+        // summaryをtranscriptエントリに統合（別エントリは作らない）
+        if (transcriptEntry) { transcriptEntry.summary = data.summary; persistHistory(); }
         if (currentUserId) {
           fetch("/summaries", {
             method: "POST",
@@ -3284,7 +3298,7 @@
 
       // ② フル録音停止後の後処理（teardownVisualizerはここで初めて呼ぶ）
       let afterStopCalled = false;
-      function doAfterRecStop(capturedTranscript) {
+      function doAfterRecStop(capturedTranscript, transcriptEntry) {
         if (afterStopCalled) return; // タイムアウトと正常終了の競合を防ぐ
         afterStopCalled = true;
         // セッションが変わっていたら（新録音が開始されていたら）要約をスキップ
@@ -3294,7 +3308,7 @@
         if (remaining.trim()) triggerSummarize(remaining, stoppedSessionId);
         if (capturedTranscript.trim()) {
           triggerCorrection(capturedTranscript, stoppedSessionId);
-          triggerFinalSummary(capturedTranscript, stoppedSessionId);
+          triggerFinalSummary(capturedTranscript, stoppedSessionId, transcriptEntry);
         }
         setRecState("idle");
         document.getElementById("navRecBtn").classList.remove("recording");
@@ -3306,16 +3320,18 @@
         const fallbackTimer = setTimeout(() => {
           console.warn("fullRecorder.onstop タイムアウト → 強制teardown");
           const t = (whisperTranscript || finalTranscript);
-          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
-          doAfterRecStop(t);
+          let te = null;
+          if (t.trim()) { saveToHistory("transcript", t, recTopic, null); te = historyLog[0]; }
+          doAfterRecStop(t, te);
         }, 5000);
 
         fullRecorder.onerror = async () => {
           clearTimeout(fallbackTimer);
           await lastWhisperChunkPromise.catch(() => {});
           const t = (whisperTranscript || finalTranscript);
-          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
-          doAfterRecStop(t);
+          let te = null;
+          if (t.trim()) { saveToHistory("transcript", t, recTopic, null); te = historyLog[0]; }
+          doAfterRecStop(t, te);
         };
         fullRecorder.onstop = async () => {
           clearTimeout(fallbackTimer);
@@ -3327,16 +3343,18 @@
             const blob = new Blob(fullRecBlobs, { type: fullRecMime });
             audioUrl = URL.createObjectURL(blob);
           }
-          if (t.trim()) saveToHistory("transcript", t, recTopic, audioUrl);
-          doAfterRecStop(t);
+          let transcriptEntry = null;
+          if (t.trim()) { saveToHistory("transcript", t, recTopic, audioUrl); transcriptEntry = historyLog[0]; }
+          doAfterRecStop(t, transcriptEntry);
         };
         fullRecorder.stop();
       } else {
         // fullRecorderがない場合：Whisper完了を待ってから後処理
         lastWhisperChunkPromise.catch(() => {}).then(() => {
           const t = (whisperTranscript || finalTranscript);
-          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
-          doAfterRecStop(t);
+          let te = null;
+          if (t.trim()) { saveToHistory("transcript", t, recTopic, null); te = historyLog[0]; }
+          doAfterRecStop(t, te);
         });
       }
     }
