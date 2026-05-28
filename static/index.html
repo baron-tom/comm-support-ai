@@ -1536,29 +1536,6 @@
             <button class="regen-btn" id="regenBtn" disabled>再生成 ↺</button>
           </div>
         </div>
-        <div class="stat-cards-row">
-          <div class="stat-card">
-            <div class="stat-icon-wrap stat-decision">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#4A9B5E" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <span class="stat-label">決定事項</span>
-            <span class="stat-num" id="decisionCount">0<small>件</small></span>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrap stat-todo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#D4850A" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <span class="stat-label">TODO</span>
-            <span class="stat-num" id="todoCount">0<small>件</small></span>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon-wrap stat-confirm">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#5B5BD6" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <span class="stat-label">要確認事項</span>
-            <span class="stat-num" id="confirmCount">0<small>件</small></span>
-          </div>
-        </div>
         <div class="summary-body">
           <p class="empty-placeholder" id="summaryPlaceholder">録音後にAIが要約を生成します</p>
           <div id="summariesList"></div>
@@ -1923,7 +1900,6 @@
       <div class="hd-audio-label">🎙 録音音声</div>
       <audio id="hdAudioPlayer" controls></audio>
     </div>
-    <div class="stat-cards-row" id="hdStatRow"></div>
     <div id="hdContent" class="hd-content"></div>
     <div id="hdSummaryWrap" style="display:none">
       <div class="hd-section-label">📋 全体まとめ</div>
@@ -2299,26 +2275,6 @@
       audioWrap.style.display = "none";
     }
 
-    const text = item.content || "";
-    const decisions = (text.match(/決定|合意|確定|承認/g) || []).length;
-    const todos = (text.match(/TODO|タスク|アクション|対応|担当|実施/g) || []).length;
-    const confirms = (text.match(/要確認|不明|確認|検討|？/g) || []).length;
-    document.getElementById("hdStatRow").innerHTML = `
-      <div class="stat-card">
-        <div class="stat-icon-wrap stat-decision"><svg viewBox="0 0 24 24" fill="none" stroke="#4A9B5E" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg></div>
-        <span class="stat-label">決定事項</span>
-        <span class="stat-num">${decisions}<small>件</small></span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon-wrap stat-todo"><svg viewBox="0 0 24 24" fill="none" stroke="#D4850A" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-        <span class="stat-label">TODO</span>
-        <span class="stat-num">${todos}<small>件</small></span>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon-wrap stat-confirm"><svg viewBox="0 0 24 24" fill="none" stroke="#5B5BD6" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-        <span class="stat-label">要確認事項</span>
-        <span class="stat-num">${confirms}<small>件</small></span>
-      </div>`;
 
     document.getElementById("hdContent").textContent = item.content || "";
     renderSummaryEl(item.summary);
@@ -2573,61 +2529,6 @@
   const typeToScene = { company: "work", school: "class", other: "default" };
   const typeToLabel = { company: "会社", school: "学校", other: "その他" };
 
-  const STAT_CONFIGS = {
-    company: [
-      { label: "決定事項", cls: "stat-decision",
-        svg: `<polyline points="20 6 9 17 4 12"/>`,
-        re: /決定|合意|確定|承認/g },
-      { label: "TODO", cls: "stat-todo",
-        svg: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
-        re: /TODO|タスク|アクション|対応|担当|実施/g },
-      { label: "要確認事項", cls: "stat-confirm",
-        svg: `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
-        re: /要確認|不明|確認|検討|？/g },
-    ],
-    school: [
-      { label: "重要ポイント", cls: "stat-decision",
-        svg: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
-        re: /重要|ポイント|必ず|試験|テスト|大切|覚/g },
-      { label: "課題・宿題", cls: "stat-todo",
-        svg: `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>`,
-        re: /課題|宿題|提出|レポート|次回|予習/g },
-      { label: "要復習", cls: "stat-confirm",
-        svg: `<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.46"/>`,
-        re: /復習|確認|不明|理解|わからない|？|補足/g },
-    ],
-    other: [
-      { label: "要点", cls: "stat-decision",
-        svg: `<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`,
-        re: /重要|ポイント|要点|まとめ|結論/g },
-      { label: "アクション", cls: "stat-todo",
-        svg: `<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`,
-        re: /TODO|タスク|アクション|対応|実施|やること/g },
-      { label: "不明点", cls: "stat-confirm",
-        svg: `<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>`,
-        re: /不明|確認|検討|？|わからない|要確認/g },
-    ],
-  };
-  let currentStatConfig = STAT_CONFIGS.company;
-
-  function applyStatCardLayout(type) {
-    const cfg = STAT_CONFIGS[type] || STAT_CONFIGS.other;
-    currentStatConfig = cfg;
-    const ids = ["decisionCount", "todoCount", "confirmCount"];
-    ids.forEach((id, i) => {
-      const numEl = document.getElementById(id);
-      if (!numEl) return;
-      const card = numEl.closest(".stat-card");
-      const wrap = card.querySelector(".stat-icon-wrap");
-      const labelEl = card.querySelector(".stat-label");
-      wrap.className = `stat-icon-wrap ${cfg[i].cls}`;
-      const stroke = cfg[i].cls === "stat-decision" ? "#4A9B5E"
-                   : cfg[i].cls === "stat-todo"     ? "#D4850A" : "#5B5BD6";
-      wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" width="14" height="14">${cfg[i].svg}</svg>`;
-      labelEl.textContent = cfg[i].label;
-    });
-  }
-
   function applyUserType(type) {
     currentScene = typeToScene[type] || "default";
     localStorage.setItem(USER_TYPE_KEY, type);
@@ -2636,7 +2537,6 @@
     if (lbl) lbl.textContent = label;
     const badge = document.getElementById("sceneTypeBadge");
     if (badge) badge.textContent = label;
-    applyStatCardLayout(type);
   }
 
   function showOnboarding() {
@@ -2972,7 +2872,6 @@
             }),
           }).catch(() => {});
         }
-        updateStatCards(data.summary);
       }
       try { document.getElementById("regenBtn").disabled = false; } catch {}
       collapseIntermediates();
@@ -2997,13 +2896,6 @@
     document.getElementById("showMoreSummaries").style.display = "none";
   });
 
-  function updateStatCards(summaryText) {
-    const ids = ["decisionCount", "todoCount", "confirmCount"];
-    ids.forEach((id, i) => {
-      const count = (summaryText.match(currentStatConfig[i].re) || []).length;
-      document.getElementById(id).innerHTML = `${count}<small>件</small>`;
-    });
-  }
 
   // ---- 要約 ----
   async function triggerSummarize(text, sessionId) {
@@ -3322,11 +3214,6 @@
         document.getElementById("allDownloadBtn").style.display = "none";
         document.getElementById("showMoreSummaries").style.display = "none";
         document.getElementById("regenBtn").disabled = true;
-        // 統計カードをリセット
-        ["decisionCount", "todoCount", "confirmCount"].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.innerHTML = '0<small>件</small>';
-        });
 
         // ① ビジュアライザ + getUserMedia（音声設定を確立してからSRを起動）
         //   getUserMedia で noiseSuppression:false/autoGainControl:true を設定し、
