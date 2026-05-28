@@ -2343,6 +2343,8 @@
   let historyLog = [];
   let recStartTime = null;
   let transcriptEntries = [];
+  let recSessionId = 0;            // 録音セッションID（要約の競合防止）
+  let lastWhisperChunkPromise = Promise.resolve(); // 最後のWhisperチャンク完了待ち
 
   // ---- ビジュアライザー ----
   let audioCtx = null;
@@ -2764,18 +2766,21 @@
   }
 
   // ---- 補正テキスト ----
-  async function triggerCorrection() {
-    if (!finalTranscript.trim()) return;
+  async function triggerCorrection(text, sessionId) {
+    const t = text || finalTranscript;
+    if (!t.trim()) return;
     const topic = document.getElementById("topicInput").value.trim();
     const card = addSummaryCard("補正中...", true);
+    if (!card) return;
     card.classList.add("corrected");
     card.querySelector(".summary-card-num").textContent = "━ 補正テキスト ━";
     try {
       const res = await fetch("/summarize", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ text: finalTranscript, scene: currentScene, level: summaryLevel, mode: "correct", topic }),
+        body: JSON.stringify({ text: t, scene: currentScene, level: summaryLevel, mode: "correct", topic }),
       });
+      if (sessionId && sessionId !== recSessionId) return; // 新録音が始まっていたら破棄
       const data = await res.json();
       card.querySelector(".summary-card-text").textContent = data.summary;
       card.querySelector("textarea").value = data.summary;
@@ -2786,18 +2791,21 @@
   }
 
   // ---- 全体まとめ ----
-  async function triggerFinalSummary() {
-    if (!finalTranscript.trim()) return;
+  async function triggerFinalSummary(text, sessionId) {
+    const t = text || finalTranscript;
+    if (!t.trim()) return;
     const topic = document.getElementById("topicInput").value.trim();
     const card = addSummaryCard("全体まとめを生成中...", true);
+    if (!card) return;
     card.classList.add("final");
     card.querySelector(".summary-card-num").textContent = "━ 全体まとめ ━";
     try {
       const res = await fetch("/summarize", {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ text: finalTranscript, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
+        body: JSON.stringify({ text: t, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
       });
+      if (sessionId && sessionId !== recSessionId) return; // 新録音が始まっていたら破棄
       const data = await res.json();
       if (!data.summary) {
         card.querySelector(".summary-card-text").textContent = "エラー: " + (data.detail || JSON.stringify(data));
@@ -2816,7 +2824,7 @@
             body: JSON.stringify({
               topic: topic || "録音",
               scene: currentScene,
-              transcript: finalTranscript,
+              transcript: t,
               summary: data.summary,
               duration_seconds: recSeconds,
             }),
@@ -2856,16 +2864,18 @@
   }
 
   // ---- 要約 ----
-  async function triggerSummarize(text) {
+  async function triggerSummarize(text, sessionId) {
     if (!text.trim()) return;
     const topic = document.getElementById("topicInput").value.trim();
     const card = addSummaryCard("要約中...", true);
+    if (!card) return;
     try {
       const res = await fetch("/summarize", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ text, scene: currentScene, level: summaryLevel, mode: "summary", topic }),
       });
+      if (sessionId && sessionId !== recSessionId) return; // 新録音が始まっていたら破棄
       const data = await res.json();
       if (!data.summary) {
         card.querySelector(".summary-card-text").textContent = "エラー: " + (data.detail || "要約の取得に失敗しました");
@@ -2881,7 +2891,8 @@
     }
   }
 
-  function addSummaryCard(text, loading = false) {
+  function addSummaryCard(text, loading = false, sessionId) {
+    if (sessionId && sessionId !== recSessionId) return null; // 古いセッションなら追加しない
     const list = document.getElementById("summariesList");
     const count = list.querySelectorAll(".summary-card").length + 1;
     const card = document.createElement("div");
@@ -3006,6 +3017,12 @@
   }
 
   async function sendChunkToWhisper(blob) {
+    const p = _sendChunkToWhisper(blob);
+    lastWhisperChunkPromise = p;
+    return p;
+  }
+
+  async function _sendChunkToWhisper(blob) {
     const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
     const fd = new FormData();
     fd.append("file", blob, `chunk.${ext}`);
@@ -3156,7 +3173,9 @@
         transcriptEntries = [];
         whisperTranscript = "";
         whisperPrompt = "";
+        lastWhisperChunkPromise = Promise.resolve();
         recStartTime = Date.now();
+        const currentSessionId = ++recSessionId;
         document.getElementById("recTimer").textContent = "00:00";
         document.getElementById("liveBox").innerHTML = "";
         // 要約エリアをリセット（前回の要約が残らないように）
@@ -3257,19 +3276,21 @@
       }
 
       const recTopic = document.getElementById("topicInput").value.trim() || "録音";
-      const capturedTranscript = finalTranscript;
+      const stoppedSessionId = currentSessionId;
 
       // ② フル録音停止後の後処理（teardownVisualizerはここで初めて呼ぶ）
       let afterStopCalled = false;
-      function doAfterRecStop() {
+      function doAfterRecStop(capturedTranscript) {
         if (afterStopCalled) return; // タイムアウトと正常終了の競合を防ぐ
         afterStopCalled = true;
+        // セッションが変わっていたら（新録音が開始されていたら）要約をスキップ
+        if (stoppedSessionId !== recSessionId) { teardownVisualizer(); setRecState("idle"); return; }
         teardownVisualizer();
         const remaining = capturedTranscript.slice(summarizedLength);
-        if (remaining.trim()) triggerSummarize(remaining);
+        if (remaining.trim()) triggerSummarize(remaining, stoppedSessionId);
         if (capturedTranscript.trim()) {
-          triggerCorrection();
-          triggerFinalSummary();
+          triggerCorrection(capturedTranscript, stoppedSessionId);
+          triggerFinalSummary(capturedTranscript, stoppedSessionId);
         }
         setRecState("idle");
         document.getElementById("navRecBtn").classList.remove("recording");
@@ -3277,37 +3298,42 @@
       }
 
       if (fullRecorder && fullRecorder.state !== "inactive") {
-        // onstopが発火しない場合の安全弁（2秒タイムアウト）
+        // onstopが発火しない場合の安全弁（5秒タイムアウト）
         const fallbackTimer = setTimeout(() => {
           console.warn("fullRecorder.onstop タイムアウト → 強制teardown");
-          doAfterRecStop();
-        }, 2000);
+          const t = (whisperTranscript || finalTranscript);
+          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
+          doAfterRecStop(t);
+        }, 5000);
 
-        fullRecorder.onerror = () => {
+        fullRecorder.onerror = async () => {
           clearTimeout(fallbackTimer);
-          // エラー時も audioUrl なしで履歴保存
-          if (capturedTranscript.trim()) {
-            saveToHistory("transcript", capturedTranscript, recTopic, null);
-          }
-          doAfterRecStop();
+          await lastWhisperChunkPromise.catch(() => {});
+          const t = (whisperTranscript || finalTranscript);
+          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
+          doAfterRecStop(t);
         };
-        fullRecorder.onstop = () => {
+        fullRecorder.onstop = async () => {
           clearTimeout(fallbackTimer);
+          // 最後のWhisperチャンクの完了を待つ
+          await lastWhisperChunkPromise.catch(() => {});
+          const t = (whisperTranscript || finalTranscript);
           let audioUrl = null;
           if (fullRecBlobs.length > 0) {
             const blob = new Blob(fullRecBlobs, { type: fullRecMime });
             audioUrl = URL.createObjectURL(blob);
           }
-          if (capturedTranscript.trim()) {
-            saveToHistory("transcript", capturedTranscript, recTopic, audioUrl);
-          }
-          doAfterRecStop();
+          if (t.trim()) saveToHistory("transcript", t, recTopic, audioUrl);
+          doAfterRecStop(t);
         };
         fullRecorder.stop();
       } else {
-        // fullRecorderがない場合は即座に後処理
-        if (capturedTranscript.trim()) saveToHistory("transcript", capturedTranscript, recTopic, null);
-        doAfterRecStop();
+        // fullRecorderがない場合：Whisper完了を待ってから後処理
+        lastWhisperChunkPromise.catch(() => {}).then(() => {
+          const t = (whisperTranscript || finalTranscript);
+          if (t.trim()) saveToHistory("transcript", t, recTopic, null);
+          doAfterRecStop(t);
+        });
       }
     }
 
