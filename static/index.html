@@ -2896,7 +2896,15 @@
       card.querySelector(".summary-card-text").style.opacity = "1";
       if (data.summary) {
         // summaryをtranscriptエントリに統合（別エントリは作らない）
-        if (transcriptEntry) { transcriptEntry.summary = data.summary; persistHistory(); }
+        if (transcriptEntry) {
+          transcriptEntry.summary = data.summary;
+          persistHistory();
+          // 詳細画面が開いていてこのエントリを表示中なら即更新
+          if (currentDetailItem === transcriptEntry) {
+            document.getElementById("hdSummary").textContent = data.summary;
+            document.getElementById("hdSummaryWrap").style.display = "";
+          }
+        }
         if (currentUserId) {
           fetch("/summaries", {
             method: "POST",
