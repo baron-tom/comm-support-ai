@@ -1690,6 +1690,12 @@
   <div class="history-tabs">
     <button class="history-tab active" data-panel="history-panel">履歴</button>
     <button class="history-tab" data-panel="todo-panel">TODOリスト</button>
+    <button id="histSelectBtn" style="margin-left:auto;border:none;background:none;color:#647D58;font-size:0.88rem;font-weight:600;cursor:pointer;padding:8px 12px;font-family:Inter,sans-serif">選択</button>
+  </div>
+  <div id="histSelectBar" style="display:none;padding:10px 20px;background:#fdf8f2;border-bottom:1px solid #E8DDD2;display:flex;align-items:center;gap:10px">
+    <span id="histSelectCount" style="font-size:0.88rem;color:#78716c;flex:1">0件選択中</span>
+    <button id="histSelectAllBtn" style="border:1px solid #d6d3d1;background:#fff;border-radius:8px;padding:6px 12px;font-size:0.82rem;cursor:pointer;font-family:Inter,sans-serif">すべて選択</button>
+    <button id="histDeleteSelectedBtn" style="border:none;background:#dc2626;color:#fff;border-radius:8px;padding:6px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;font-family:Inter,sans-serif">削除</button>
   </div>
   <div id="history-panel">
     <div class="history-list" id="historyList">
@@ -2739,6 +2745,44 @@
     }
   }
 
+  let histSelectMode = false;
+  const histSelectedItems = new Set();
+
+  function updateHistSelectBar() {
+    document.getElementById("histSelectCount").textContent = `${histSelectedItems.size}件選択中`;
+  }
+
+  document.getElementById("histSelectBtn").addEventListener("click", () => {
+    histSelectMode = !histSelectMode;
+    histSelectedItems.clear();
+    document.getElementById("histSelectBtn").textContent = histSelectMode ? "キャンセル" : "選択";
+    const bar = document.getElementById("histSelectBar");
+    bar.style.display = histSelectMode ? "flex" : "none";
+    updateHistSelectBar();
+    renderHistory();
+  });
+
+  document.getElementById("histSelectAllBtn").addEventListener("click", () => {
+    const isAll = histSelectedItems.size === historyLog.filter(i => i.type !== "summary").length;
+    if (isAll) {
+      histSelectedItems.clear();
+    } else {
+      historyLog.forEach(i => { if (i.type !== "summary") histSelectedItems.add(i); });
+    }
+    updateHistSelectBar();
+    renderHistory();
+  });
+
+  document.getElementById("histDeleteSelectedBtn").addEventListener("click", () => {
+    if (histSelectedItems.size === 0) return;
+    if (!confirm(`${histSelectedItems.size}件の履歴を削除しますか？`)) return;
+    historyLog = historyLog.filter(i => !histSelectedItems.has(i));
+    histSelectedItems.clear();
+    persistHistory();
+    updateHistSelectBar();
+    renderHistory();
+  });
+
   function renderHistory() {
     const list = document.getElementById("historyList");
     if (historyLog.length === 0) {
@@ -2759,12 +2803,24 @@
       }
       const el = document.createElement("div");
       el.className = "history-item";
+      if (histSelectMode && histSelectedItems.has(item)) el.style.background = "#e8f0e4";
       const timeStr = item.time.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-      const typeLabel = item.type === "summary" ? "📋 要約" : item.type === "transcript" ? "🎙 録音" : item.type === "chat" ? "💬 チャット" : "📄";
-      // XSS対策: textContentで安全にセット
+      const typeLabel = item.type === "transcript" ? "🎙 録音" : item.type === "chat" ? "💬 チャット" : "📄";
       const titleEl = document.createElement("div");
       titleEl.className = "history-item-title";
-      titleEl.textContent = item.topic;
+      titleEl.style.display = "flex";
+      titleEl.style.alignItems = "center";
+      titleEl.style.gap = "8px";
+      if (histSelectMode) {
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = histSelectedItems.has(item);
+        cb.style.width = "18px"; cb.style.height = "18px"; cb.style.accentColor = "#647D58"; cb.style.flexShrink = "0";
+        titleEl.appendChild(cb);
+      }
+      const titleText = document.createElement("span");
+      titleText.textContent = item.topic;
+      titleEl.appendChild(titleText);
       const previewEl = document.createElement("div");
       previewEl.className = "history-item-preview";
       previewEl.textContent = (item.content || "").replace(/\n/g, " ").slice(0, 80);
@@ -2774,7 +2830,16 @@
       el.appendChild(titleEl);
       el.appendChild(previewEl);
       el.appendChild(metaEl);
-      el.addEventListener("click", () => openHistoryDetail(item));
+      el.addEventListener("click", () => {
+        if (histSelectMode) {
+          if (histSelectedItems.has(item)) histSelectedItems.delete(item);
+          else histSelectedItems.add(item);
+          updateHistSelectBar();
+          renderHistory();
+        } else {
+          openHistoryDetail(item);
+        }
+      });
       list.appendChild(el);
     });
   }
