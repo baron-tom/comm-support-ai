@@ -1265,7 +1265,7 @@
       font-size: 1.6rem; font-weight: 400; color: #1A1512; line-height: 1;
     }
     .stat-num small { font-size: 0.75rem; color: #A89880; font-family: 'Inter', sans-serif; }
-    .summary-body { font-size: 0.95rem; line-height: 1.75; color: #292524; }
+    .summary-body { font-size: 0.95rem; line-height: 1.75; color: #292524; max-height: 420px; overflow-y: auto; }
     .empty-placeholder { color: #d6d3d1; font-size: 0.9rem; text-align: center; padding: 12px 0; }
 
     .transcript-section { margin: 0 20px; padding: 16px 0 8px; border-top: 1px solid #E8DDD2; }
@@ -3071,7 +3071,9 @@
     });
     card.querySelector(".del").addEventListener("click", () => card.remove());
     list.appendChild(card);
-    list.scrollTop = list.scrollHeight;
+    // スクロール対象は overflow-y を持つ親(.summary-body)
+    const body = list.closest(".summary-body");
+    if (body) body.scrollTop = body.scrollHeight;
     document.getElementById("summaryPlaceholder").style.display = "none";
     document.getElementById("allDownloadBtn").style.display = "block";
     return card;
