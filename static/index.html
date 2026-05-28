@@ -1900,7 +1900,12 @@
       <div class="hd-audio-label">🎙 録音音声</div>
       <audio id="hdAudioPlayer" controls></audio>
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:0.75rem;font-weight:700;color:#a8a29e;letter-spacing:0.08em">📝 文字起こし</span>
+      <button id="hdContentEditBtn" style="border:none;background:none;color:#647D58;font-size:0.8rem;font-weight:600;cursor:pointer;padding:2px 6px;font-family:Inter,sans-serif">編集</button>
+    </div>
     <div id="hdContent" class="hd-content"></div>
+    <textarea id="hdContentEdit" class="hd-content" style="display:none;resize:vertical;width:100%;box-sizing:border-box;font-family:inherit;white-space:pre-wrap" rows="10"></textarea>
     <div id="hdSummaryWrap" style="display:none">
       <div class="hd-section-label">📋 全体まとめ</div>
       <div id="hdSummary" style="background:#f0ebe3;border-radius:12px;padding:14px 16px;white-space:normal"></div>
@@ -2277,12 +2282,46 @@
 
 
     document.getElementById("hdContent").textContent = item.content || "";
+    document.getElementById("hdContent").style.display = "";
+    document.getElementById("hdContentEdit").style.display = "none";
+    document.getElementById("hdContentEditBtn").textContent = "編集";
     renderSummaryEl(item.summary);
     document.getElementById("historyDetail").classList.remove("hd-hidden");
   }
 
   document.getElementById("histDetailBack").addEventListener("click", () => {
+    // 編集中なら保存してから閉じる
+    const editArea = document.getElementById("hdContentEdit");
+    if (editArea.style.display !== "none" && currentDetailItem) {
+      currentDetailItem.content = editArea.value;
+      persistHistory();
+    }
     document.getElementById("historyDetail").classList.add("hd-hidden");
+    document.getElementById("hdContentEditBtn").textContent = "編集";
+    document.getElementById("hdContent").style.display = "";
+    editArea.style.display = "none";
+  });
+
+  document.getElementById("hdContentEditBtn").addEventListener("click", () => {
+    const btn = document.getElementById("hdContentEditBtn");
+    const display = document.getElementById("hdContent");
+    const editArea = document.getElementById("hdContentEdit");
+    if (btn.textContent === "編集") {
+      editArea.value = currentDetailItem?.content || "";
+      display.style.display = "none";
+      editArea.style.display = "";
+      editArea.focus();
+      btn.textContent = "保存";
+    } else {
+      if (currentDetailItem) {
+        currentDetailItem.content = editArea.value;
+        persistHistory();
+        display.textContent = editArea.value;
+      }
+      editArea.style.display = "none";
+      display.style.display = "";
+      btn.textContent = "編集";
+    }
   });
 
   document.getElementById("hdAskBtn").addEventListener("click", () => {
