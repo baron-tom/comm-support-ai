@@ -3018,12 +3018,6 @@
   }
 
   async function sendChunkToWhisper(blob) {
-    const p = _sendChunkToWhisper(blob);
-    lastWhisperChunkPromise = p;
-    return p;
-  }
-
-  async function _sendChunkToWhisper(blob) {
     const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
     const fd = new FormData();
     fd.append("file", blob, `chunk.${ext}`);
@@ -3272,7 +3266,16 @@
       // ① Whisperチャンクを先に停止（micStream停止前に処理させる）
       if (chunkInterval) { clearInterval(chunkInterval); chunkInterval = null; }
       if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
+        const mr = mediaRecorder;
+        // stop()より前にPromiseを仕込む（onstopが先に発火する競合を防ぐ）
+        lastWhisperChunkPromise = new Promise(resolve => {
+          const origOnstop = mr.onstop;
+          mr.onstop = async () => {
+            if (origOnstop) await origOnstop.call(mr);
+            resolve();
+          };
+        });
+        mr.stop();
         mediaRecorder = null;
       }
 
