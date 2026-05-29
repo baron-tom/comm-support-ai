@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Recote</title>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3700933967406708"
+     crossorigin="anonymous"></script>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -1284,7 +1286,9 @@
       font-size: 0.72rem; color: #A89880; font-variant-numeric: tabular-nums;
       width: 36px; flex-shrink: 0; padding-top: 2px; font-family: 'Inter', sans-serif;
     }
-    .transcript-text { font-size: 0.92rem; line-height: 1.7; color: #3D2F25; flex: 1; }
+    .transcript-text { font-size: 0.92rem; line-height: 1.7; color: #3D2F25; flex: 1; outline: none; border-radius: 4px; padding: 1px 3px; margin: -1px -3px; }
+    .transcript-text[contenteditable="true"]:hover { background: rgba(210,180,140,0.15); cursor: text; }
+    .transcript-text[contenteditable="true"]:focus { background: rgba(210,180,140,0.25); box-shadow: 0 0 0 1.5px #C8A882; }
 
     .home-chat-bar {
       position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
@@ -1922,52 +1926,74 @@
   </div>
   <div class="legal-scroll">
     <h2 class="legal-title">利用規約</h2>
-    <div class="legal-date">最終更新：2026年5月22日</div>
+    <div class="legal-date">最終更新：2026年5月29日</div>
 
     <div class="legal-section">
       <h3>第1条（適用）</h3>
-      <p>本規約は、Recote（以下「本サービス」）の利用に関する条件を定めるものです。ユーザーは本規約に同意した上で本サービスを利用するものとします。</p>
+      <p>本規約は、Recote（以下「本サービス」）の利用に関する条件を定めるものです。本サービスを利用することで、ユーザーは本規約に同意したものとみなします。</p>
     </div>
 
     <div class="legal-section">
       <h3>第2条（サービスの内容）</h3>
-      <p>本サービスは、音声の文字起こし・要約・AI会話支援を提供するWebアプリケーションです。無料プランおよび有料プランを提供します。</p>
+      <p>本サービスは、音声の文字起こし・要約・AI会話支援を提供するWebアプリケーションです。無料プラン（FREE）および有料プラン（PRO・PREMIUM）を提供します。各プランの機能・利用上限は、サービス内の料金案内ページに記載のとおりです。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第3条（禁止事項）</h3>
-      <p>ユーザーは以下の行為を行ってはなりません。</p>
+      <h3>第3条（アカウント）</h3>
+      <p>一部の機能はメールアドレスによる認証が必要です。ユーザーは正確な情報を登録し、アカウントの管理に責任を負います。不正利用を発見した場合は速やかに運営者へご連絡ください。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第4条（有料プラン・課金）</h3>
+      <p>有料プランはStripe（Stripe Inc.）を通じて課金されます。</p>
       <ul>
-        <li>法令または公序良俗に違反する行為</li>
-        <li>第三者の著作権・個人情報・プライバシーを侵害する行為</li>
-        <li>本サービスの運営を妨害する行為</li>
-        <li>本サービスを商業目的で無断複製・再配布する行為</li>
-        <li>他のユーザーになりすます行為</li>
+        <li><strong>月払いプラン：</strong>毎月自動更新されます。</li>
+        <li><strong>年払いプラン：</strong>毎年自動更新されます。</li>
+        <li><strong>解約：</strong>次回更新日の前日までに解約申請を行うことで、以降の課金を停止できます。解約後も当該請求期間の終了まではサービスをご利用いただけます。解約の申請はお問い合わせ先（baron.deerhorse@gmail.com）までご連絡ください。</li>
+        <li><strong>返金：</strong>原則として、決済済みの料金は返金いたしません。ただし、運営者の責に帰すべき重大なサービス障害が発生した場合はこの限りではありません。</li>
       </ul>
     </div>
 
     <div class="legal-section">
-      <h3>第4条（外部AIサービスの利用）</h3>
-      <p>本サービスは、テキスト要約・AI会話処理のためにGoogle Gemini API、音声文字起こしのためにGroq Whisper APIを利用しています。これらの機能を使用する際、入力した音声・テキストデータが各APIプロバイダーのサーバーへ送信されます。各プロバイダーのAPIポリシーにより、送信データはAIモデルの学習には使用されません。機密情報・個人を特定できる情報の入力はお控えください。</p>
+      <h3>第5条（外部AIサービスの利用）</h3>
+      <p>本サービスはテキスト要約・AI会話処理にGoogle Gemini API、音声文字起こしにGroq Whisper APIを利用しています。これらの機能を使用する際、入力した音声・テキストデータが各APIプロバイダーのサーバーへ送信されます。各プロバイダーのAPIポリシーにより、送信データはAIモデルの学習には使用されません。氏名・住所・電話番号など個人を特定できる情報や機密性の高い情報の入力はお控えください。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第5条（免責事項）</h3>
-      <p>本サービスは現状有姿で提供されます。AI生成コンテンツの正確性・完全性について保証しません。本サービスの利用により生じた損害について、当社は一切の責任を負いません。</p>
+      <h3>第6条（禁止事項）</h3>
+      <p>ユーザーは以下の行為を行ってはなりません。</p>
+      <ul>
+        <li>法令または公序良俗に違反する行為</li>
+        <li>第三者の著作権・個人情報・プライバシーを侵害する行為</li>
+        <li>本サービスの運営を妨害する行為（過度なアクセス・クローリング等）</li>
+        <li>本サービスを商業目的で無断複製・再配布する行為</li>
+        <li>他のユーザーになりすます行為</li>
+        <li>虚偽の情報を登録する行為</li>
+      </ul>
     </div>
 
     <div class="legal-section">
-      <h3>第6条（サービスの変更・停止）</h3>
-      <p>当社はユーザーへの事前通知なく、本サービスの内容変更・一時停止・終了を行う場合があります。</p>
+      <h3>第7条（免責事項）</h3>
+      <p>本サービスは現状有姿で提供されます。AI生成コンテンツの正確性・完全性・特定目的への適合性について保証しません。本サービスの利用により生じた損害について、運営者は法令上の責任を負う場合を除き一切の責任を負いません。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第7条（知的財産権）</h3>
-      <p>本サービスに関する著作権その他一切の知的財産権は、当社または正当な権利者に帰属します。ユーザーが入力・録音した音声・テキストの権利はユーザーに帰属します。</p>
+      <h3>第8条（サービスの変更・停止）</h3>
+      <p>運営者はユーザーへの事前通知なく、本サービスの内容変更・一時停止・終了を行う場合があります。これによりユーザーに損害が生じた場合でも、運営者は責任を負いません。</p>
     </div>
 
     <div class="legal-section">
-      <h3>第8条（準拠法・管轄）</h3>
+      <h3>第9条（知的財産権）</h3>
+      <p>本サービスに関する著作権その他一切の知的財産権は、運営者または正当な権利者に帰属します。ユーザーが入力・録音した音声・テキストの権利はユーザーに帰属します。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第10条（規約の変更）</h3>
+      <p>運営者は必要に応じて本規約を変更できます。変更後の規約はサービス内に掲示した時点で効力を生じます。変更後も本サービスを利用し続けた場合、変更後の規約に同意したものとみなします。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>第11条（準拠法・管轄）</h3>
       <p>本規約は日本法に準拠します。本サービスに関する紛争は、東京地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
     </div>
   </div>
@@ -1980,53 +2006,77 @@
   </div>
   <div class="legal-scroll">
     <h2 class="legal-title">プライバシーポリシー</h2>
-    <div class="legal-date">最終更新：2026年5月22日</div>
+    <div class="legal-date">最終更新：2026年5月29日</div>
 
     <div class="legal-section">
-      <h3>1. 収集する情報</h3>
+      <h3>1. 運営者情報</h3>
+      <p>本サービス「Recote」は個人が運営しています。お問い合わせ先：baron.deerhorse@gmail.com</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>2. 収集する情報</h3>
       <ul>
         <li><strong>アカウント情報：</strong>メールアドレス（ログイン時）</li>
-        <li><strong>音声・テキストデータ：</strong>録音中の音声から生成された文字起こしテキスト</li>
-        <li><strong>利用ログ：</strong>機能の利用状況、アクセス日時</li>
-        <li><strong>デバイス情報：</strong>ブラウザ種別、OSバージョン</li>
+        <li><strong>音声・テキストデータ：</strong>録音中の音声から生成された文字起こしテキスト・要約テキスト</li>
+        <li><strong>利用ログ：</strong>機能の利用状況、アクセス日時、利用量</li>
+        <li><strong>デバイス情報：</strong>ブラウザ種別、OSバージョン（ブラウザが自動送信するもの）</li>
+        <li><strong>決済情報：</strong>有料プランご利用時、決済処理はStripeが行います。カード番号等の決済情報は運営者のサーバーには保存されません。</li>
       </ul>
     </div>
 
     <div class="legal-section">
-      <h3>2. 利用目的</h3>
+      <h3>3. 利用目的</h3>
       <ul>
-        <li>サービスの提供・改善</li>
+        <li>サービスの提供・品質改善</li>
         <li>AI要約・文字起こし機能の処理</li>
         <li>プラン管理・利用量の計測</li>
         <li>サポート対応・不正利用の防止</li>
+        <li>広告配信（詳細は5項を参照）</li>
       </ul>
     </div>
 
     <div class="legal-section">
-      <h3>3. 外部サービスへのデータ送信</h3>
+      <h3>4. 外部サービスへのデータ送信</h3>
       <p>本サービスは機能提供のために以下の外部サービスを利用しています。各サービスのAPIポリシーに基づき、送信データはAIモデルの学習には使用されません。</p>
       <ul>
-        <li><strong>Google Gemini API（Google LLC）：</strong>AI要約・チャット処理のため、文字起こしテキストを送信します</li>
-        <li><strong>Groq Whisper API（Groq Inc.）：</strong>音声文字起こし処理のため、PRO/PREMIUMプランで録音音声データを送信します</li>
-        <li><strong>Supabase（Supabase Inc.）：</strong>アカウント認証・要約履歴・利用量データを保存します（米国サーバー）</li>
-        <li><strong>Stripe（Stripe Inc.）：</strong>有料プランの決済処理のため、カード情報等をStripeに直接送信します（当社はカード情報を保持しません）</li>
+        <li><strong>Google Gemini API（Google LLC）：</strong>AI要約・チャット処理のため、文字起こしテキストを送信します。</li>
+        <li><strong>Groq Whisper API（Groq Inc.）：</strong>音声文字起こし処理のため、録音音声データを送信します。</li>
+        <li><strong>Supabase（Supabase Inc.）：</strong>アカウント認証・履歴・利用量データを保存します（米国サーバー）。</li>
+        <li><strong>Stripe（Stripe Inc.）：</strong>有料プランの決済処理のため、カード情報等をStripeに直接送信します（運営者はカード情報を保持しません）。</li>
+        <li><strong>Google AdSense（Google LLC）：</strong>広告配信のため、Cookieを使用します（詳細は5項を参照）。</li>
       </ul>
       <p>⚠️ 氏名・住所・電話番号など個人を特定できる情報や、機密性の高い情報の入力はお控えください。</p>
     </div>
 
     <div class="legal-section">
-      <h3>4. データの保存と削除</h3>
-      <p>文字起こし・要約データはブラウザのlocalStorageおよびサーバー（認証ユーザーのみ）に保存されます。FREEプランの履歴は7日間保持後に削除されます。アカウント削除の申請により全データを消去します。</p>
+      <h3>5. Cookie・ローカルストレージ・広告</h3>
+      <p>本サービスはセッション管理・設定保存のためブラウザのlocalStorageを使用します。</p>
+      <p>また、本サービスではGoogle AdSense（Google LLC）による広告を配信しています。GoogleはCookieを使用して、ユーザーの本サービスおよび他サイトへの過去のアクセス情報をもとに広告を表示することがあります。</p>
+      <ul>
+        <li>Googleのプライバシーポリシー：<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">https://policies.google.com/privacy</a></li>
+        <li>パーソナライズ広告のオプトアウト：<a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">https://www.google.com/settings/ads</a></li>
+      </ul>
     </div>
 
     <div class="legal-section">
-      <h3>5. Cookie・ローカルストレージ</h3>
-      <p>本サービスはセッション管理・設定保存のためlocalStorageを使用します。広告目的のトラッキングは行いません。</p>
+      <h3>6. データの保存と削除</h3>
+      <p>文字起こし・要約データはブラウザのlocalStorageに保存されます。認証済みユーザーの場合は一部のデータをサーバー（Supabase）にも保存します。データの削除をご希望の場合は、お問い合わせ先（baron.deerhorse@gmail.com）までご連絡ください。</p>
     </div>
 
     <div class="legal-section">
-      <h3>6. お問い合わせ</h3>
-      <p>個人情報の取り扱いに関するお問い合わせは、アプリ内のお問い合わせフォームよりご連絡ください。</p>
+      <h3>7. ユーザーの権利</h3>
+      <p>ユーザーは自身の個人情報について、開示・訂正・削除を請求する権利を有します。ご希望の場合はお問い合わせ先までご連絡ください。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>8. プライバシーポリシーの変更</h3>
+      <p>本ポリシーは必要に応じて変更することがあります。変更後の内容はサービス内に掲示した時点で効力を生じます。</p>
+    </div>
+
+    <div class="legal-section">
+      <h3>9. お問い合わせ</h3>
+      <p>個人情報の取り扱いに関するお問い合わせは、以下までご連絡ください。<br>
+      📧 baron.deerhorse@gmail.com</p>
     </div>
   </div>
 </div>
@@ -2784,9 +2834,16 @@
       return;
     }
     list.innerHTML = "";
+    const cutoffTime = userPlan === "free" ? Date.now() - 7 * 24 * 60 * 60 * 1000 : 0;
+    const visibleLog = historyLog.filter(item => item.type !== "summary" && item.time >= cutoffTime);
+    if (visibleLog.length === 0) {
+      list.innerHTML = userPlan === "free"
+        ? '<div class="history-empty">直近7日間の履歴がありません。<br><small style="opacity:0.6">PROプランでは全履歴を表示できます。</small></div>'
+        : '<div class="history-empty">まだ履歴がありません。<br>録音・要約すると、ここに保存されます。</div>';
+      return;
+    }
     let lastDate = "";
-    historyLog.forEach(item => {
-      if (item.type === "summary") return; // transcriptエントリに統合済み
+    visibleLog.forEach(item => {
       const dateStr = item.time.toLocaleDateString("ja-JP");
       if (dateStr !== lastDate) {
         const d = document.createElement("div");
@@ -3130,16 +3187,46 @@
 
     function renderTranscriptTimeline(interim) {
       const box = document.getElementById("liveBox");
-      box.innerHTML = "";
-      transcriptEntries.forEach(entry => {
+
+      // 確定済みエントリは追記のみ（DOM再構築しない→編集中テキストを保持）
+      const existingRows = box.querySelectorAll(".transcript-entry:not(.transcript-entry-interim)");
+      const existingCount = existingRows.length;
+      transcriptEntries.slice(existingCount).forEach((entry, i) => {
+        const idx = existingCount + i;
         const row = document.createElement("div");
         row.className = "transcript-entry" + (entry.whisper ? " whisper-entry" : "");
-        row.innerHTML = `<span class="transcript-ts">${entry.ts}</span><span class="transcript-text">${entry.whisper ? "✦ " : ""}${entry.text}</span>`;
+        const prefix = entry.whisper ? "✦ " : "";
+        const span = document.createElement("span");
+        span.className = "transcript-text";
+        span.contentEditable = "true";
+        span.spellcheck = false;
+        span.dataset.idx = idx;
+        span.textContent = prefix + entry.text;
+        span.addEventListener("input", (e) => {
+          const di = parseInt(e.target.dataset.idx);
+          let newText = e.target.textContent;
+          if (transcriptEntries[di] && transcriptEntries[di].whisper && newText.startsWith("✦ ")) {
+            newText = newText.slice(2);
+          }
+          if (transcriptEntries[di]) {
+            transcriptEntries[di].text = newText;
+            finalTranscript = transcriptEntries.map(en => en.text).join("");
+          }
+        });
+        const tsSpan = document.createElement("span");
+        tsSpan.className = "transcript-ts";
+        tsSpan.textContent = entry.ts;
+        row.appendChild(tsSpan);
+        row.appendChild(span);
         box.appendChild(row);
       });
+
+      // interimエントリは毎回差し替え
+      const oldInterim = box.querySelector(".transcript-entry-interim");
+      if (oldInterim) oldInterim.remove();
       if (interim) {
         const row = document.createElement("div");
-        row.className = "transcript-entry";
+        row.className = "transcript-entry transcript-entry-interim";
         row.style.opacity = "0.45";
         row.innerHTML = `<span class="transcript-ts">…</span><span class="transcript-text">${interim}</span>`;
         box.appendChild(row);
@@ -3691,6 +3778,7 @@
   function updatePlanUI(me) {
     const plan = me.plan || "free";
     userPlan = plan;
+    renderHistory(); // プラン確定後に履歴フィルタを再適用
     const badge = document.getElementById("planBadge");
     if (badge) badge.textContent = plan.toUpperCase();
 
